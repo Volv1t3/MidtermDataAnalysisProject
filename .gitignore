@@ -1,8 +1,12 @@
 # IDE and Editor
+.idea/
 .idea
+.vscode/
 .vscode
+.claude/
 .claude
 .amazon
+.amazon/
 
 # Virtual Environment
 .venv
