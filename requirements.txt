@@ -3,3 +3,6 @@ matplotlib
 pandas
 seaborn
 squarify
+missingno
+scikit-learn
+prompt-toolkit
