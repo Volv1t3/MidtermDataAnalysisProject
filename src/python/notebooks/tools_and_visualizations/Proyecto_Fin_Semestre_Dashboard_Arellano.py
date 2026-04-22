@@ -580,12 +580,311 @@ def plot_heatmap(agg_margin_by_subcat, selected_subcats=None, top_n=None):
 
     _apply_standard_theme(
         fig,
-        "Profitability Grid by Sub-Category",
-        "Heatmap visualization of profit margins across all discount segments and sub-categories",
+        "Tabulación del Margen de Ganancia por Subcategoría segmentado por Rango de Descuento",
+        "Las 17 subcategorías de la compañia muestran una tendencia similar donde un descuento superior al 30% invierte<br> las ganancias porcentuales y resigna a pérdidas para cada venta realizada",
     )
     
     _apply_x_axis_customization(fig, x_label="Rango de Descuentos", x_tick_labels=DISCOUNT_LABELS, x_ticks=list(range(len(DISCOUNT_LABELS))), tick_angle=0)
     _apply_y_axis_customization(fig, y_label="Sub-Categorías", y_axis_lable_distance=-0.1)
+    return fig
+
+
+# =============================================================================
+# Charts - Pricing Strategy
+# =============================================================================
+
+def plot_price_volume_profit_bubble(data):
+    """Bubble chart: Price-Volume-Profit by Category."""
+    agg_price_volume = data.groupby('Category').agg({
+        'Sales': ['sum', 'mean'],
+        'Profit': 'sum',
+        'Order ID': 'count'
+    }).reset_index()
+    
+    agg_price_volume.columns = ['Category', 'Total_Revenue', 'Avg_Price', 'Total_Profit', 'Transaction_Count']
+    agg_price_volume['Profit_Margin_Pct'] = (agg_price_volume['Total_Profit'] / agg_price_volume['Total_Revenue']) * 100
+    
+    fig = go.Figure()
+    
+    for idx, row in agg_price_volume.iterrows():
+        fig.add_trace(go.Scatter(
+            x=[row['Avg_Price']],
+            y=[row['Profit_Margin_Pct']],
+            mode='markers+text',
+            marker=dict(
+                size=row['Total_Revenue'] / 5000,
+                color=CATEGORY_COLORS.get(row['Category'], COLOR_GREY),
+                line=dict(color=COLOR_LINE, width=1),
+                opacity=0.7
+            ),
+            text=row['Category'],
+            textposition='top center',
+            textfont=dict(size=12, color=COLOR_LINE, family="Arial Black"),
+            name=row['Category'],
+            showlegend=True,
+            hovertemplate=(
+                f"<b>{row['Category']}</b><br>"
+                f"Precio Promedio: ${row['Avg_Price']:,.2f}<br>"
+                f"Margen de Utilidad: {row['Profit_Margin_Pct']:.2f}%<br>"
+                f"Ingresos Totales: ${row['Total_Revenue']:,.2f}<br>"
+                f"Transacciones: {row['Transaction_Count']}<extra></extra>"
+            )
+        ))
+    
+    fig.add_hline(y=0, line_dash="dash", line_color=COLOR_LINE, line_width=1, opacity=0.5)
+    
+    _apply_standard_theme(
+        fig,
+        "Análisis Precio-Volumen-Utilidad por Categoría",
+        "El tamaño de las burbujas representa los ingresos totales. Las categorías con mayor precio promedio<br>y margen positivo indican estrategias de precios efectivas."
+    )
+    
+    _apply_x_axis_customization(fig, x_label="Precio Promedio ($)", x_axis_style={
+        'showgrid': True,
+        'gridcolor': 'lightgray',
+        'gridwidth': 0.5,
+        'showline': True,
+        'linewidth': 2,
+        'linecolor': COLOR_LINE,
+        'ticks': 'outside',
+        'tickwidth': 2,
+        'tickcolor': COLOR_LINE,
+        'tickformat': ',.0f',
+        'tickprefix': '$'
+    }, x_axis_label_distance=-0.15)
+    
+    _apply_y_axis_customization(fig, y_label="Margen de Utilidad (%)", y_axis_style={
+        'showgrid': True,
+        'gridcolor': 'lightgray',
+        'gridwidth': 0.5,
+        'showline': True,
+        'linewidth': 2,
+        'linecolor': COLOR_LINE,
+        'ticks': 'outside',
+        'tickwidth': 2,
+        'tickcolor': COLOR_LINE,
+        'zeroline': True,
+        'tickformat': '.0f',
+        'ticksuffix': '%'
+    }, y_axis_lable_distance=-0.07)
+    
+    fig.update_layout(
+        hovermode='closest',
+        legend=dict(
+            title="Categoría",
+            yanchor='top',
+            y=0.99,
+            xanchor='right',
+            x=0.99,
+            itemdoubleclick=False,
+            itemclick=False
+        )
+    )
+    
+    return fig
+
+
+def plot_pricing_efficiency_quadrant(data):
+    """Quadrant analysis: Pricing Strategy Efficiency by Category."""
+    agg_pricing_efficiency = data.groupby('Category').agg({
+        'Sales': ['sum', 'mean'],
+        'Profit': 'sum',
+        'Order ID': 'count'
+    }).reset_index()
+    
+    agg_pricing_efficiency.columns = ['Category', 'Total_Revenue', 'Avg_Price', 'Total_Profit', 'Transaction_Volume']
+    agg_pricing_efficiency['Profit_Margin_Pct'] = (agg_pricing_efficiency['Total_Profit'] / agg_pricing_efficiency['Total_Revenue']) * 100
+    
+    avg_price = agg_pricing_efficiency['Avg_Price'].mean()
+    avg_margin = agg_pricing_efficiency['Profit_Margin_Pct'].mean()
+    
+    fig = go.Figure()
+    
+    fig.add_hline(
+        y=avg_margin,
+        line_dash='dash',
+        line_color=COLOR_LINE,
+        line_width=1,
+        opacity=0.5,
+        annotation_text=f"Margen Promedio: {avg_margin:.1f}%",
+        annotation_position="left",
+        annotation=dict(
+            font=dict(size=10, color=COLOR_LINE, family="Arial", style='italic'),
+            bgcolor="white",
+            bordercolor=COLOR_BG,
+            borderwidth=1,
+            borderpad=4,
+            x=0.1
+        )
+    )
+    
+    fig.add_vline(
+        x=avg_price,
+        line_dash="dash",
+        line_color=COLOR_LINE,
+        line_width=1,
+        opacity=0.5,
+        annotation_text=f"Precio Promedio: ${avg_price:,.0f}",
+        annotation_position="top",
+        annotation=dict(
+            font=dict(size=10, color=COLOR_LINE, family="Arial", style='italic'),
+            bgcolor="white",
+            bordercolor=COLOR_BG,
+            borderwidth=1,
+            borderpad=4,
+            y=0.95
+        )
+    )
+    
+    for idx, row in agg_pricing_efficiency.iterrows():
+        fig.add_trace(go.Scatter(
+            x=[row['Avg_Price']],
+            y=[row['Profit_Margin_Pct']],
+            mode='markers+text',
+            marker=dict(
+                size=row['Transaction_Volume'] / 50,
+                color=CATEGORY_COLORS.get(row['Category'], COLOR_GREY),
+                line=dict(color=COLOR_LINE, width=1),
+                opacity=0.7
+            ),
+            text=row['Category'],
+            textposition='top center',
+            textfont=dict(size=12, color=COLOR_LINE, family="Arial Black"),
+            name=row['Category'],
+            showlegend=True,
+            hovertemplate=(
+                f"<b>{row['Category']}</b><br>"
+                f"Precio Promedio: ${row['Avg_Price']:,.2f}<br>"
+                f"Margen de Utilidad: {row['Profit_Margin_Pct']:.2f}%<br>"
+                f"Volumen de Transacciones: {row['Transaction_Volume']}<br>"
+                f"Ingresos Totales: ${row['Total_Revenue']:,.2f}<extra></extra>"
+            )
+        ))
+    
+    _apply_standard_theme(
+        fig,
+        "Análisis de Cuadrantes: Eficiencia de Estrategia de Precios",
+        "El tamaño de las burbujas representa el volumen de transacciones. Los cuadrantes dividen las categorías<br>según precio y margen promedio para identificar oportunidades de optimización."
+    )
+    
+    _apply_x_axis_customization(fig, x_label="Precio Promedio ($)", x_axis_style={
+        'showgrid': True,
+        'gridcolor': 'lightgray',
+        'gridwidth': 0.5,
+        'showline': True,
+        'linewidth': 2,
+        'linecolor': COLOR_LINE,
+        'ticks': 'outside',
+        'tickwidth': 2,
+        'tickcolor': COLOR_LINE,
+        'tickformat': ',.0f',
+        'tickprefix': '$'
+    }, x_axis_label_distance=-0.15)
+    
+    _apply_y_axis_customization(fig, y_label="Margen de Utilidad (%)", y_axis_style={
+        'showgrid': True,
+        'gridcolor': 'lightgray',
+        'gridwidth': 0.5,
+        'showline': True,
+        'linewidth': 2,
+        'linecolor': COLOR_LINE,
+        'ticks': 'outside',
+        'tickwidth': 2,
+        'tickcolor': COLOR_LINE,
+        'zeroline': True,
+        'tickformat': '.0f',
+        'ticksuffix': '%'
+    }, y_axis_lable_distance=-0.07)
+    
+    fig.update_layout(
+        hovermode='closest',
+        legend=dict(
+            title="Categoría",
+            yanchor='top',
+            y=0.99,
+            xanchor='right',
+            x=0.99,
+            itemdoubleclick=False,
+            itemclick=False
+        )
+    )
+    
+    return fig
+
+
+def plot_avg_customer_purchase_by_discount(data):
+    """Line chart: Average Customer Purchase Value by Category across Discount Bins."""
+    agg_customer_purchase = data.groupby(['Discount_Bin', 'Category']).agg({
+        'Sales': 'sum',
+        'Customer ID': 'nunique'
+    }).reset_index()
+    
+    agg_customer_purchase['Avg_Purchase_Per_Customer'] = (
+        agg_customer_purchase['Sales'] / agg_customer_purchase['Customer ID']
+    )
+    
+    fig = go.Figure()
+    
+    for category in sorted(data['Category'].unique()):
+        cat_data = agg_customer_purchase[agg_customer_purchase['Category'] == category]
+        
+        fig.add_trace(go.Scatter(
+            x=cat_data['Discount_Bin'].astype(str),
+            y=cat_data['Avg_Purchase_Per_Customer'],
+            mode='lines+markers',
+            name=category,
+            line=dict(
+                color=CATEGORY_COLORS.get(category, COLOR_GREY),
+                width=3
+            ),
+            marker=dict(
+                size=10,
+                color=CATEGORY_COLORS.get(category, COLOR_GREY),
+                line=dict(color='white', width=2)
+            ),
+            hovertemplate=(
+                f"<b>{category}</b><br>"
+                "Rango de Descuento: %{x}<br>"
+                "Compra Promedio: $%{y:,.2f}<br>"
+                "<extra></extra>"
+            )
+        ))
+    
+    _apply_standard_theme(
+        fig,
+        "Valor Promedio de Compra por Cliente según Categoría y Rango de Descuento",
+        "Análisis del comportamiento de compra promedio por cliente en cada categoría a medida que aumenta<br>el descuento aplicado. Identifica el punto óptimo de descuento para maximizar el valor por cliente."
+    )
+    
+    _apply_x_axis_customization(fig, x_label="Rango de Descuentos", tick_angle=30, x_axis_label_distance=-0.15)
+    _apply_y_axis_customization(fig, y_label="Compra Promedio por Cliente ($)", y_axis_style={
+        'showgrid': True,
+        'gridcolor': 'lightgray',
+        'gridwidth': 0.5,
+        'showline': True,
+        'linewidth': 2,
+        'linecolor': COLOR_LINE,
+        'ticks': 'outside',
+        'tickwidth': 2,
+        'tickcolor': COLOR_LINE,
+        'tickformat': ',.0f',
+        'tickprefix': '$'
+    }, y_axis_lable_distance=-0.07)
+    
+    fig.update_layout(
+        hovermode='x unified',
+        legend=dict(
+            title="Categoría",
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            itemdoubleclick=False,
+            itemclick=False
+        )
+    )
+    
     return fig
 
 
@@ -1137,25 +1436,80 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
       )
 
       # --- KPI Cards (2 rows layout) ---
-      st.markdown("### Key Performance Indicators")
+      st.html("""
+          <div style='display:flex; align-items:center; gap:10px; margin:5px; justify-content:center'>
+              <h3>Resultados Generales del Análisis de Márgenes y Porcentajes de Ganancia por Porcentaje de Descuento</h3>
+          </div>
+          """)
       # First row: 2 KPI cards
       c1, c2 = st.columns(2)
       with c1:
-          st.info("KPI Placeholder 1: Total Revenue")
+          st.html(f"""
+          <div style="background-color: {COLOR_ATTENTION}; padding: 20px; border-radius: 10px; color: white;">
+                <h4 style="margin: 0; color: white;">Ganancia Definida por Cada Rango de Descuento</h4>
+                <h2 style="margin: 10px 0; color: white;">EL descuento máximo corresponde al 30%</h2>
+                <p style="margin: 5px 0; color: white;">Margen de Ganancia Promedio por Rango de Descuento</p>
+                <p style="margin: 5px 0; color: white;">La ganancia promedio por rango de descuento <b>cae rápidamente</b> pasado el 30% de descuento en general.</p>
+            </div>
+          """)
       with c2:
-          st.info("KPI Placeholder 2: Profit Margin (%)")
+          # Calculate profit margin stats
+          avg_margin = aggs.get("margin_by_discount", pd.DataFrame())
+          if not avg_margin.empty:
+              overall_margin = avg_margin["Avg_Profit_Margin_Pct"].mean()
+              st.html(f"""
+              <div style="background-color: {COLOR_WARNING}; padding: 20px; border-radius: 10px; color: white;">
+                    <h4 style="margin: 0; color: white;">Margen de Ganancia Promedio General</h4>
+                    <h2 style="margin: 10px 0; color: white;">{overall_margin:.2f}%</h2>
+                    <p style="margin: 5px 0; color: white;">Calculado sobre todos los rangos de descuento</p>
+                    <p style="margin: 5px 0; color: white;">El margen promedio <b>disminuye significativamente</b> cuando los descuentos superan el 30%.</p>
+                </div>
+              """)
       
       # Second row: 3 KPI cards
       c3, c4, c5 = st.columns(3)
       with c3:
-          st.info("KPI Placeholder 3: Unique Customers")
+          # Calculate unique customers
+          unique_customers = data["Customer ID"].nunique()
+          total_orders = len(data)
+          st.html(f"""
+          <div style="background-color: {COLOR_GREEN}; padding: 20px; border-radius: 10px; color: white;">
+                <h4 style="margin: 0; color: white;">Clientes Únicos</h4>
+                <h2 style="margin: 10px 0; color: white;">{unique_customers:,}</h2>
+                <p style="margin: 5px 0; color: white;">Total de órdenes: {total_orders:,}</p>
+                <p style="margin: 5px 0; color: white;">Promedio de <b>{total_orders/unique_customers:.1f} órdenes</b> por cliente.</p>
+            </div>
+          """)
       with c4:
-          st.info("KPI Placeholder 4: Average Order Value")
+          # Calculate average order value
+          avg_order_value = data["Sales"].mean()
+          total_sales = data["Sales"].sum()
+          st.html(f"""
+          <div style="background-color: {COLOR_GREY}; padding: 20px; border-radius: 10px; color: white;">
+                <h4 style="margin: 0; color: white;">Valor Promedio por Orden</h4>
+                <h2 style="margin: 10px 0; color: white;">${avg_order_value:,.2f}</h2>
+                <p style="margin: 5px 0; color: white;">Ventas totales: ${total_sales:,.2f}</p>
+                <p style="margin: 5px 0; color: white;">Representa el <b>ticket promedio</b> de cada transacción.</p>
+            </div>
+          """)
       with c5:
-          st.info("KPI Placeholder 5: Total Orders")
+          # Calculate total profit
+          total_profit = data["Profit"].sum()
+          profit_margin_overall = (total_profit / total_sales * 100) if total_sales > 0 else 0
+          st.html(f"""
+          <div style="background-color: {COLOR_ATTENTION}; padding: 20px; border-radius: 10px; color: white;">
+                <h4 style="margin: 0; color: white;">Ganancia Total</h4>
+                <h2 style="margin: 10px 0; color: white;">${total_profit:,.2f}</h2>
+                <p style="margin: 5px 0; color: white;">Margen de ganancia: {profit_margin_overall:.2f}%</p>
+                <p style="margin: 5px 0; color: white;">Ganancia <b>acumulada</b> en el periodo analizado.</p>
+            </div>
+          """)
 
       # --- Waterfall ---
-      st.markdown("### Profit Analysis by Discount Range")
+      st.markdown("---")
+      st.html("""
+      <h3>Exploración de la tendencia general de la Ganancia Promedio y el Margen de Ganancia Porcentual por Rango de Descuento</h3>
+      """)
       if not aggs.get("profit_by_discount", pd.DataFrame()).empty:
           st.plotly_chart(
               plot_waterfall(
@@ -1168,13 +1522,39 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
           )
 
       # --- Lollipop ---
-      st.markdown("### Profit Margin by Category")
+      st.markdown("---")
+      st.html("""
+      <h3>Desglose del Margen de Ganancia Promedio por Categoría</h3>
+      """)
       # KPI Cards (2-Column)
       c1, c2 = st.columns(2)
       with c1:
-          st.info("KPI Placeholder: Highest Margin Category")
+          # Highest margin category
+          margin_by_cat = aggs.get("margin_by_category", pd.DataFrame())
+          if not margin_by_cat.empty:
+              best_cat = margin_by_cat.groupby("Category")["Avg_Profit_Margin_Pct"].mean().idxmax()
+              best_margin = margin_by_cat.groupby("Category")["Avg_Profit_Margin_Pct"].mean().max()
+              st.html(f"""
+              <div style="background-color: {COLOR_GREEN}; padding: 20px; border-radius: 10px; color: white;">
+                    <h4 style="margin: 0; color: white;">Categoría con Mayor Margen</h4>
+                    <h2 style="margin: 10px 0; color: white;">{best_cat}</h2>
+                    <p style="margin: 5px 0; color: white;">Margen promedio: {best_margin:.2f}%</p>
+                    <p style="margin: 5px 0; color: white;">La categoría <b>{best_cat}</b> muestra la mejor rentabilidad promedio.</p>
+                </div>
+              """)
       with c2:
-          st.info("KPI Placeholder: Top Selling Category")
+          # Top selling category by total sales
+          if not data.empty:
+              top_cat = data.groupby("Category")["Sales"].sum().idxmax()
+              top_sales = data.groupby("Category")["Sales"].sum().max()
+              st.html(f"""
+              <div style="background-color: {COLOR_ATTENTION}; padding: 20px; border-radius: 10px; color: white;">
+                    <h4 style="margin: 0; color: white;">Categoría con Mayores Ventas</h4>
+                    <h2 style="margin: 10px 0; color: white;">{top_cat}</h2>
+                    <p style="margin: 5px 0; color: white;">Ventas totales: ${top_sales:,.2f}</p>
+                    <p style="margin: 5px 0; color: white;">La categoría <b>{top_cat}</b> genera el mayor volumen de ventas.</p>
+                </div>
+              """)
 
       # Local filter in mosaic layout
       f1, f2 = st.columns([2, 1])
@@ -1199,13 +1579,41 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
           )
 
       # --- Heatmap ---
-      st.markdown("### Profitability Grid by Sub-Category")
+      st.markdown("---")
+      st.html(
+          """
+          <h3>Exploración del Margen de Ganancia Promedio por Subcategoría</h3>
+          """
+      )
       # KPI Cards (2-Column)
       c1, c2 = st.columns(2)
       with c1:
-          st.info("KPI Placeholder: Best Performing Sub-Category")
+          # Best performing sub-category
+          margin_by_subcat = aggs.get("margin_by_subcategory", pd.DataFrame())
+          if not margin_by_subcat.empty:
+              best_subcat = margin_by_subcat.groupby("Sub_Category")["Avg_Profit_Margin_Pct"].mean().idxmax()
+              best_subcat_margin = margin_by_subcat.groupby("Sub_Category")["Avg_Profit_Margin_Pct"].mean().max()
+              st.html(f"""
+              <div style="background-color: {COLOR_GREEN}; padding: 20px; border-radius: 10px; color: white;">
+                    <h4 style="margin: 0; color: white;">Subcategoría con Mejor Desempeño</h4>
+                    <h2 style="margin: 10px 0; color: white;">{best_subcat}</h2>
+                    <p style="margin: 5px 0; color: white;">Margen promedio: {best_subcat_margin:.2f}%</p>
+                    <p style="margin: 5px 0; color: white;">La subcategoría <b>{best_subcat}</b> tiene el margen más alto.</p>
+                </div>
+              """)
       with c2:
-          st.info("KPI Placeholder: Slowest Growing Sub-Category")
+          # Worst performing sub-category
+          if not margin_by_subcat.empty:
+              worst_subcat = margin_by_subcat.groupby("Sub_Category")["Avg_Profit_Margin_Pct"].mean().idxmin()
+              worst_subcat_margin = margin_by_subcat.groupby("Sub_Category")["Avg_Profit_Margin_Pct"].mean().min()
+              st.html(f"""
+              <div style="background-color: {COLOR_RED}; padding: 20px; border-radius: 10px; color: white;">
+                    <h4 style="margin: 0; color: white;">Subcategoría con Menor Desempeño</h4>
+                    <h2 style="margin: 10px 0; color: white;">{worst_subcat}</h2>
+                    <p style="margin: 5px 0; color: white;">Margen promedio: {worst_subcat_margin:.2f}%</p>
+                    <p style="margin: 5px 0; color: white;">La subcategoría <b>{worst_subcat}</b> requiere <b>atención especial</b>.</p>
+                </div>
+              """)
 
       # Select All option in mosaic layout
       f1, f2 = st.columns([2, 1])
@@ -1506,6 +1914,349 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
                       "displayModeBar": False})
 
 
+def render_tab_pricing(data: pd.DataFrame, aggs: dict):
+    """Tab 3: Pricing Strategy Analysis."""
+    st.html("""
+    <h2> Exploración de Estrategias de Precios y Valor por Cliente </h2>
+    <small><i>Este dashboard permite analizar la relación entre precios, volúmenes de venta, márgenes de utilidad,
+    y el valor promedio de compra por cliente del minorista Superstore Giant. Se pueden aplicar filtros para analizar 
+    diferentes segmentos del negocio.</i></small>
+    """)
+
+    # --- KPI Cards (3 columns) ---
+    st.html("""
+        <div style='display:flex; align-items:center; gap:10px; margin:5px; justify-content:center'>
+            <h3>Resultados Generales del Análisis de Estrategia de Precios</h3>
+        </div>
+        """)
+    
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        # Highest average price category
+        cat_avg_price = data.groupby('Category')['Sales'].mean()
+        highest_price_cat = cat_avg_price.idxmax()
+        highest_price = cat_avg_price.max()
+        st.html(f"""
+        <div style="background-color: {COLOR_ATTENTION}; padding: 20px; border-radius: 10px; color: white;">
+              <h4 style="margin: 0; color: white;">Categoría con Mayor Precio Promedio</h4>
+              <h2 style="margin: 10px 0; color: white;">{highest_price_cat}</h2>
+              <p style="margin: 5px 0; color: white;">Precio promedio: ${highest_price:,.2f}</p>
+              <p style="margin: 5px 0; color: white;">La categoría <b>{highest_price_cat}</b> tiene el ticket promedio más alto.</p>
+          </div>
+        """)
+    
+    with c2:
+        # Average customer purchase value
+        total_sales = data['Sales'].sum()
+        unique_customers = data['Customer ID'].nunique()
+        avg_customer_value = total_sales / unique_customers
+        st.html(f"""
+        <div style="background-color: {COLOR_GREEN}; padding: 20px; border-radius: 10px; color: white;">
+              <h4 style="margin: 0; color: white;">Valor Promedio por Cliente</h4>
+              <h2 style="margin: 10px 0; color: white;">${avg_customer_value:,.2f}</h2>
+              <p style="margin: 5px 0; color: white;">Clientes únicos: {unique_customers:,}</p>
+              <p style="margin: 5px 0; color: white;">Representa el <b>valor total</b> generado por cliente.</p>
+          </div>
+        """)
+    
+    with c3:
+        # Most efficient pricing category (highest margin)
+        cat_margin = data.groupby('Category').apply(
+            lambda x: (x['Profit'].sum() / x['Sales'].sum() * 100)
+        )
+        best_margin_cat = cat_margin.idxmax()
+        best_margin = cat_margin.max()
+        st.html(f"""
+        <div style="background-color: {COLOR_WARNING}; padding: 20px; border-radius: 10px; color: white;">
+              <h4 style="margin: 0; color: white;">Categoría con Estrategia Más Eficiente</h4>
+              <h2 style="margin: 10px 0; color: white;">{best_margin_cat}</h2>
+              <p style="margin: 5px 0; color: white;">Margen de utilidad: {best_margin:.2f}%</p>
+              <p style="margin: 5px 0; color: white;">La categoría <b>{best_margin_cat}</b> optimiza precio y rentabilidad.</p>
+          </div>
+        """)
+
+    # --- Price-Volume-Profit Bubble Chart ---
+    st.markdown("---")
+    st.html("<h3>Análisis Precio-Volumen-Utilidad por Categoría</h3>")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        # Highest revenue category
+        cat_revenue = data.groupby('Category')['Sales'].sum()
+        top_revenue_cat = cat_revenue.idxmax()
+        top_revenue = cat_revenue.max()
+        st.html(f"""
+        <div style="background-color: {COLOR_GREEN}; padding: 20px; border-radius: 10px; color: white;">
+              <h4 style="margin: 0; color: white;">Categoría con Mayores Ingresos</h4>
+              <h2 style="margin: 10px 0; color: white;">{top_revenue_cat}</h2>
+              <p style="margin: 5px 0; color: white;">Ingresos totales: ${top_revenue:,.2f}</p>
+              <p style="margin: 5px 0; color: white;">Genera el <b>mayor volumen</b> de ingresos.</p>
+          </div>
+        """)
+    
+    with c2:
+        # Transaction count
+        total_transactions = len(data)
+        avg_transaction_value = data['Sales'].mean()
+        st.html(f"""
+        <div style="background-color: {COLOR_GREY}; padding: 20px; border-radius: 10px; color: white;">
+              <h4 style="margin: 0; color: white;">Volumen Total de Transacciones</h4>
+              <h2 style="margin: 10px 0; color: white;">{total_transactions:,}</h2>
+              <p style="margin: 5px 0; color: white;">Valor promedio: ${avg_transaction_value:,.2f}</p>
+              <p style="margin: 5px 0; color: white;">Representa el <b>total de órdenes</b> procesadas.</p>
+          </div>
+        """)
+    
+    # Filters for bubble chart
+    f1, f2 = st.columns(2)
+    with f1:
+        cat_agg = data.groupby('Category')['Sales'].sum()
+        min_revenue = int(cat_agg.min())
+        max_revenue = int(cat_agg.max())
+        min_revenue_filter = st.number_input(
+            "Umbral de Ingresos Totales Mínimos por Categoría",
+            value=0,
+            key="bubble_min_revenue",
+            min_value=0,
+            max_value=max_revenue,
+            step=10000,
+            format='%d',
+            help="Filtro de ingresos mínimos para inclusión de categorías en el gráfico de burbujas"
+        )
+    with f2:
+        cat_margin = data.groupby('Category').apply(
+            lambda x: (x['Profit'].sum() / x['Sales'].sum() * 100)
+        )
+        min_margin_val = int(cat_margin.min()) - 5
+        max_margin_val = int(cat_margin.max()) + 5
+        margin_range_bubble = st.slider(
+            "Rango de Margen de Utilidad (%)",
+            min_value=-100,
+            max_value=100,
+            value=(min_margin_val, max_margin_val),
+            key="bubble_margin_range",
+            help="Rango de margen de utilidad para inclusión de categorías en el gráfico"
+        )
+    
+    # Apply filters and plot
+    if not data.empty:
+        filtered_bubble = data.copy()
+        cat_revenue_check = filtered_bubble.groupby('Category')['Sales'].sum()
+        cat_margin_check = filtered_bubble.groupby('Category').apply(
+            lambda x: (x['Profit'].sum() / x['Sales'].sum() * 100)
+        )
+        
+        valid_cats = []
+        for cat in filtered_bubble['Category'].unique():
+            if (cat_revenue_check[cat] >= min_revenue_filter and 
+                margin_range_bubble[0] <= cat_margin_check[cat] <= margin_range_bubble[1]):
+                valid_cats.append(cat)
+        
+        filtered_bubble = filtered_bubble[filtered_bubble['Category'].isin(valid_cats)]
+        
+        if not filtered_bubble.empty:
+            st.plotly_chart(
+                plot_price_volume_profit_bubble(filtered_bubble),
+                use_container_width=True,
+                config={
+                    "displaylogo": False,
+                    "displayModeBar": False
+                }
+            )
+        else:
+            st.warning("No hay datos disponibles con los filtros seleccionados.")
+
+    # --- Pricing Efficiency Quadrant ---
+    st.markdown("---")
+    st.html("<h3>Análisis de Cuadrantes: Eficiencia de Estrategia de Precios</h3>")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        st.html(f"""
+        <div style="background-color: {COLOR_ATTENTION}; padding: 20px; border-radius: 10px; color: white;">
+              <h4 style="margin: 0; color: white;">Interpretación de Cuadrantes</h4>
+              <h2 style="margin: 10px 0; color: white;">4 Segmentos Estratégicos</h2>
+              <p style="margin: 5px 0; color: white;">Superior Derecho: <b>Alto precio, alto margen</b> - Óptimo</p>
+              <p style="margin: 5px 0; color: white;">Inferior Izquierdo: <b>Bajo precio, bajo margen</b> - Revisar</p>
+          </div>
+        """)
+    
+    with c2:
+        # Calculate quadrant distribution
+        cat_data = data.groupby('Category').agg({
+            'Sales': 'mean',
+            'Profit': 'sum',
+            'Order ID': 'count'
+        })
+        avg_price_overall = cat_data['Sales'].mean()
+        st.html(f"""
+        <div style="background-color: {COLOR_WARNING}; padding: 20px; border-radius: 10px; color: white;">
+              <h4 style="margin: 0; color: white;">Precio Promedio General</h4>
+              <h2 style="margin: 10px 0; color: white;">${avg_price_overall:,.2f}</h2>
+              <p style="margin: 5px 0; color: white;">Calculado sobre todas las categorías</p>
+              <p style="margin: 5px 0; color: white;">Sirve como <b>línea base</b> para comparación.</p>
+          </div>
+        """)
+    
+    # Filters for quadrant chart
+    f1, f2 = st.columns(2)
+    with f1:
+        cat_price = data.groupby('Category')['Sales'].mean()
+        min_price = int(cat_price.min())
+        max_price = int(cat_price.max())
+        price_range_quadrant = st.slider(
+            "Rango de Precio Promedio ($)",
+            min_value=0,
+            max_value=max_price + 100,
+            value=(min_price, max_price),
+            key="quadrant_price_range",
+            help="Rango de precio promedio para inclusión de categorías en el análisis de cuadrantes"
+        )
+    with f2:
+        cat_transactions = data.groupby('Category')['Order ID'].count()
+        min_trans = int(cat_transactions.min())
+        max_trans = int(cat_transactions.max())
+        min_transactions = st.number_input(
+            "Volumen Mínimo de Transacciones",
+            value=min_trans,
+            key="quadrant_min_trans",
+            min_value=0,
+            max_value=max_trans,
+            step=100,
+            format='%d',
+            help="Número mínimo de transacciones para inclusión de categorías en el gráfico"
+        )
+    
+    # Apply filters and plot
+    if not data.empty:
+        filtered_quadrant = data.copy()
+        cat_price_check = filtered_quadrant.groupby('Category')['Sales'].mean()
+        cat_trans_check = filtered_quadrant.groupby('Category')['Order ID'].count()
+        
+        valid_cats = []
+        for cat in filtered_quadrant['Category'].unique():
+            if (price_range_quadrant[0] <= cat_price_check[cat] <= price_range_quadrant[1] and
+                cat_trans_check[cat] >= min_transactions):
+                valid_cats.append(cat)
+        
+        filtered_quadrant = filtered_quadrant[filtered_quadrant['Category'].isin(valid_cats)]
+        
+        if not filtered_quadrant.empty:
+            st.plotly_chart(
+                plot_pricing_efficiency_quadrant(filtered_quadrant),
+                use_container_width=True,
+                config={
+                    "displaylogo": False,
+                    "displayModeBar": False
+                }
+            )
+        else:
+            st.warning("No hay datos disponibles con los filtros seleccionados.")
+
+    # --- Average Customer Purchase by Discount ---
+    st.markdown("---")
+    st.html("<h3>Valor Promedio de Compra por Cliente según Descuento</h3>")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        # Optimal discount range
+        discount_analysis = data.groupby('Discount_Bin').agg({
+            'Sales': 'sum',
+            'Customer ID': 'nunique'
+        })
+        discount_analysis['Avg_Per_Customer'] = discount_analysis['Sales'] / discount_analysis['Customer ID']
+        optimal_discount = discount_analysis['Avg_Per_Customer'].idxmax()
+        optimal_value = discount_analysis['Avg_Per_Customer'].max()
+        st.html(f"""
+        <div style="background-color: {COLOR_GREEN}; padding: 20px; border-radius: 10px; color: white;">
+              <h4 style="margin: 0; color: white;">Rango de Descuento Óptimo</h4>
+              <h2 style="margin: 10px 0; color: white;">{optimal_discount}</h2>
+              <p style="margin: 5px 0; color: white;">Valor promedio: ${optimal_value:,.2f}</p>
+              <p style="margin: 5px 0; color: white;">Maximiza el <b>valor por cliente</b> sin sacrificar volumen.</p>
+          </div>
+        """)
+    
+    with c2:
+        # Category with highest customer value
+        cat_customer_value = data.groupby('Category').agg({
+            'Sales': 'sum',
+            'Customer ID': 'nunique'
+        })
+        cat_customer_value['Avg_Per_Customer'] = cat_customer_value['Sales'] / cat_customer_value['Customer ID']
+        best_cat = cat_customer_value['Avg_Per_Customer'].idxmax()
+        best_value = cat_customer_value['Avg_Per_Customer'].max()
+        st.html(f"""
+        <div style="background-color: {COLOR_ATTENTION}; padding: 20px; border-radius: 10px; color: white;">
+              <h4 style="margin: 0; color: white;">Categoría con Mayor Valor por Cliente</h4>
+              <h2 style="margin: 10px 0; color: white;">{best_cat}</h2>
+              <p style="margin: 5px 0; color: white;">Valor promedio: ${best_value:,.2f}</p>
+              <p style="margin: 5px 0; color: white;">Los clientes de <b>{best_cat}</b> gastan más en promedio.</p>
+          </div>
+        """)
+    
+    # Filters for line chart
+    f1, f2 = st.columns(2)
+    with f1:
+        all_cats = sorted(data["Category"].dropna().unique().tolist())
+        sel_cats_line = st.multiselect(
+            "Filtrar por Categorías de Productos",
+            options=all_cats,
+            default=all_cats,
+            help="Selección múltiple de categorías para incluir en el gráfico de líneas",
+            key="line_chart_cats"
+        )
+    with f2:
+        cat_customer_avg = data.groupby('Category').agg({
+            'Sales': 'sum',
+            'Customer ID': 'nunique'
+        })
+        cat_customer_avg['Avg_Per_Customer'] = cat_customer_avg['Sales'] / cat_customer_avg['Customer ID']
+        min_avg = int(cat_customer_avg['Avg_Per_Customer'].min())
+        max_avg = int(cat_customer_avg['Avg_Per_Customer'].max())
+        customer_value_range = st.slider(
+            "Rango de Valor Promedio por Cliente ($)",
+            min_value=0,
+            max_value=max_avg + 100,
+            value=(0, max_avg),
+            key="line_customer_value_range",
+            help="Rango de valor promedio por cliente para inclusión de categorías en el gráfico"
+        )
+    
+    # Apply filters and plot
+    if not data.empty:
+        filtered_line = data.copy()
+        
+        # Filter by selected categories
+        if sel_cats_line:
+            filtered_line = filtered_line[filtered_line['Category'].isin(sel_cats_line)]
+        
+        # Filter by customer value range
+        cat_value_check = filtered_line.groupby('Category').agg({
+            'Sales': 'sum',
+            'Customer ID': 'nunique'
+        })
+        cat_value_check['Avg_Per_Customer'] = cat_value_check['Sales'] / cat_value_check['Customer ID']
+        
+        valid_cats = []
+        for cat in filtered_line['Category'].unique():
+            if customer_value_range[0] <= cat_value_check.loc[cat, 'Avg_Per_Customer'] <= customer_value_range[1]:
+                valid_cats.append(cat)
+        
+        filtered_line = filtered_line[filtered_line['Category'].isin(valid_cats)]
+        
+        if not filtered_line.empty:
+            st.plotly_chart(
+                plot_avg_customer_purchase_by_discount(filtered_line),
+                use_container_width=True,
+                config={
+                    "displaylogo": False,
+                    "displayModeBar": False
+                }
+            )
+        else:
+            st.warning("No hay datos disponibles con los filtros seleccionados.")
+
+
 def render_tab_data(data: pd.DataFrame, aggs: dict):
     """Tab 3: Data View."""
     st.markdown("## Raw Data")
@@ -1551,13 +2302,20 @@ def main():
     aggregations = get_aggregations(filtered)
 
     # Tabbed layout
-    tabs = st.tabs(["Visión Rentabilidad por Descuentos", "Visión Rentabilidad por Categoría y Subcategoría", "Visión Datos Usados"])
+    tabs = st.tabs([
+        "Visión Rentabilidad por Descuentos", 
+        "Visión Rentabilidad por Categoría y Subcategoría", 
+        "Visión Estrategia de Precios",
+        "Visión Datos Usados"
+    ])
 
     with tabs[0]:
         render_tab_overview(filtered, aggregations)
     with tabs[1]:
         render_tab_scatter(filtered, aggregations)
     with tabs[2]:
+        render_tab_pricing(filtered, aggregations)
+    with tabs[3]:
         render_tab_data(filtered, aggregations)
 
 
