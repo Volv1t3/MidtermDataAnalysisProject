@@ -1,5 +1,6 @@
 import datetime
 from datetime import timedelta
+from typing import Any, Iterable
 
 import numpy as np
 import pandas as pd
@@ -31,7 +32,7 @@ CATEGORY_COLORS = {
     "Technology": "#00CC96",      # Green
 }
 
-DISCOUNT_BINS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 1.0]
+DISCOUNT_BINS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,1.0]
 DISCOUNT_LABELS = [
     "0-0.1",
     "0.1-0.2",
@@ -41,7 +42,8 @@ DISCOUNT_LABELS = [
     "0.5-0.6",
     "0.6-0.7",
     "0.7-0.8",
-    "0.8-1.0",
+    "0.8-0.9",
+    "0.9-1.0"
 ]
 
 
@@ -70,7 +72,7 @@ def generate_color_gradient(n: int):
     return colors
 
 
-def _apply_standard_theme(fig, title, subtitle, x_label, y_label, x_rotation=30):
+def _apply_standard_theme(fig, title, subtitle):
     """Unified styling for all dashboard graphs."""
     full_title = f"<b>{title}</b><br><i><span style='font-size:12px;font-weight:200;color:#666'>{subtitle}</span></i>"
     
@@ -79,61 +81,160 @@ def _apply_standard_theme(fig, title, subtitle, x_label, y_label, x_rotation=30)
             "text": full_title,
             "x": 0.02,
             "xanchor": "left",
-            "y": 0.95,
+            "y": 0.9,
             "font": {"size": 16, "family": "Arial"},
         },
-        margin=dict(l=100, r=40, t=100, b=80),
-        plot_bgcolor="white",
-        paper_bgcolor=COLOR_BG,
-        font=dict(family="Arial", size=11, color=COLOR_LINE),
+        autosize=False,
+        width=1200,
+        height=700,
+        margin=dict(
+            l=150,
+            r=150,
+            b=150,
+            t=150,
+            pad=4
+        ),
     )
-    
-    # Hide grids and set standard axis appearance
-    fig.update_xaxes(
-        showgrid=False, 
-        title="", 
-        showline=True, 
-        linewidth=2, 
-        linecolor=COLOR_LINE,
-        tickangle=x_rotation,
-        ticks="outside",
-        tickwidth=2,
-        tickcolor=COLOR_LINE,
-    )
-    fig.update_yaxes(
-        showgrid=False, 
-        title="", 
-        showline=True, 
-        linewidth=2, 
-        linecolor=COLOR_LINE,
-        ticks="outside",
-        tickwidth=2,
-        tickcolor=COLOR_LINE,
-    )
-    
-    # Bottom aligned Y title annotation
-    fig.add_annotation(
-        xref="paper", yref="paper",
-        x=-0.05, y=0,
-        text=y_label,
-        showarrow=False,
-        textangle=-90,
-        yanchor="bottom",
-        font=dict(size=12, color=COLOR_LINE, family="Arial Black")
-    )
-    
-    # Left aligned X title annotation
-    fig.add_annotation(
-        xref="paper", yref="paper",
-        x=0, y=-0.12,
-        text=x_label,
-        showarrow=False,
-        xanchor="left",
-        font=dict(size=12, color=COLOR_LINE, family="Arial Black")
-    )
-    
+
     return fig
 
+
+def _apply_x_axis_customization(figure, x_label=None, x_ticks=None, x_tick_labels=None, tick_angle=30,
+                                x_axis_style=None,  x_axis_label_distance: int=-0.12,row_id=None, column_id=None):
+    """Apply x-axis customization to figure or subplot.
+
+    Args:
+        figure: Plotly figure object
+        x_label: Label text for x-axis
+        x_ticks: List of tick values
+        x_tick_labels: List of tick labels (derived from x_ticks if not provided)
+        tick_angle: Rotation angle for tick labels (default: 30)
+        x_axis_style: Dictionary with x-axis style configuration
+        row_id: Row index for subplot (1-indexed)
+        column_id: Column index for subplot (1-indexed)
+    """
+    # Default x-axis style
+    default_style = {
+        "showgrid": False,
+        "title": "",
+        "showline": True,
+        "linewidth": 2,
+        "linecolor": COLOR_LINE,
+        "tickangle": tick_angle,
+        "ticks": "outside",
+        "tickwidth": 2,
+        "tickcolor": COLOR_LINE,
+    }
+
+    # Use provided style or default
+    style = x_axis_style if x_axis_style else default_style
+
+    # Add tick values and labels if provided
+    if x_ticks is not None:
+        style["tickvals"] = x_ticks
+        style["ticktext"] = x_tick_labels if x_tick_labels else [str(t) for t in x_ticks]
+
+    # Apply to specific subplot or entire figure
+    if row_id is not None and column_id is not None:
+        figure.update_xaxes(style, row=row_id, col=column_id)
+    else:
+        figure.update_xaxes(style)
+
+    # Add x-axis label annotation if provided
+    if x_label:
+        annotation_config = {
+            "xref": "paper", "yref": "y domain",
+            "x": 0,
+            "y": x_axis_label_distance,
+            "text": x_label,
+            "showarrow": False,
+            "xanchor": "left",
+            "yanchor":'bottom',
+            "font": dict(size=12, color=COLOR_LINE, family="Arial Black")
+        }
+
+        # For subplots, adjust references
+        if row_id is not None and column_id is not None:
+            annotation_config["xref"] = f"x{column_id} domain" if column_id > 1 else "x domain"
+            annotation_config["yref"] = f"y{row_id} domain" if row_id > 1 else "y domain"
+
+        figure.add_annotation(**annotation_config)
+
+    return figure
+
+
+def _apply_y_axis_customization(figure,
+                                y_label=None,
+                                y_ticks=None,
+                                y_tick_labels=None,
+                                y_axis_style=None,
+                                y_tick_style=None,
+                                y_axis_lable_distance:float=-0.12,
+                                row_id=None,
+                                column_id=None):
+    """Apply y-axis customization to figure or subplot.
+    
+    Args:
+        figure: Plotly figure object
+        y_label: Label text for y-axis
+        y_ticks: List of tick values
+        y_tick_labels: List of tick labels (derived from y_ticks if not provided)
+        y_axis_style: Dictionary with y-axis style configuration
+        row_id: Row index for subplot (1-indexed)
+        column_id: Column index for subplot (1-indexed)
+    """
+    # Default y-axis style
+    default_style = {
+        "showgrid": False,
+        "title": "",
+        "showline": True,
+        "linewidth": 2,
+        "linecolor": COLOR_LINE,
+        "ticks": "outside",
+        "tickwidth": 2,
+        "tickcolor": COLOR_LINE,
+    }
+    
+    # Use provided style or default
+    style = y_axis_style if y_axis_style else default_style
+    
+    # Add tick values and labels if provided
+    if y_ticks is not None:
+        style["tickvals"] = y_ticks
+        style["ticktext"] = y_tick_labels if y_tick_labels else [str(t) for t in y_ticks]
+    
+    # Apply to specific subplot or entire figure
+    if row_id is not None and column_id is not None:
+        figure.update_yaxes(style, row=row_id, col=column_id)
+    else:
+        figure.update_yaxes(style)
+    
+    # Add y-axis label annotation if provided
+    if y_label:
+        annotation_config = {
+            "xref": "x domain",
+            "yref": "paper",
+            "x": y_axis_lable_distance,
+            "y": 0,
+            "text": y_label,
+            "showarrow": False,
+            "textangle": -90,
+            "yanchor": "bottom",
+            "font": dict(size=12, color=COLOR_LINE, family="Arial Black")
+        }
+        
+        # For subplots, adjust references
+        if row_id is not None and column_id is not None:
+            annotation_config["xref"] = f"x{column_id} domain" if column_id > 1 else "x domain"
+            annotation_config["yref"] = f"y{row_id} domain" if row_id > 1 else "y domain"
+        
+        figure.add_annotation(**annotation_config)
+
+    if y_tick_style:
+        figure.update_layout(yaxis=y_tick_style,overwrite=False)
+
+
+    return figure
 
 # =============================================================================
 # Filtering
@@ -252,9 +353,10 @@ def plot_waterfall(agg_profit, agg_margin):
         rows=1,
         cols=2,
         subplot_titles=(
-            "<b>Average Profit by Discount Range</b>",
-            "<b>Profit Margin (%) by Discount Range</b>",
+            "<i style='font-size:10pt'>Ganancia Promedio por <b>Rango de Descuento</b> Aplicado</i>",
+            "<i style='font-size:10pt'>Margen de Ganancia Porcentual Promedio por <b>Rango de Descuento</b> Aplicado</i>"
         ),
+
     )
 
     fig.add_trace(
@@ -288,19 +390,49 @@ def plot_waterfall(agg_profit, agg_margin):
     )
 
     fig.update_layout(
+        autosize=False,
         showlegend=False,
-        height=500,
+        height=900,
+        width=1200
     )
+
+
+    _apply_standard_theme(fig, "Comparativa de Ganancia y Margen de Ganancia Promedio por cada Intervalo de Descuentos Aplicado",
+                          "Durante el periodo 2014-2017, las ventas generan ganancias y rentabilidad para la empresa mientras el descuento<br>se mantenga debajo del 30%")
+
+    _apply_x_axis_customization(fig, x_label="Rango de Descuentos", row_id=1, column_id=1, x_axis_label_distance=-0.2)
+    _apply_y_axis_customization(fig, y_label="Ganancia Promedio ($)", row_id=1, column_id=1, y_axis_style={
+        'showgrid': False,
+        'title': '',
+        'showline': True,
+        'linewidth': 2,
+        'linecolor': COLOR_LINE,
+        'ticks': 'outside',
+        'tickwidth': 2,
+        'tickcolor': COLOR_LINE,
+        'zeroline': True,
+        'tickformat': '.0f',
+        'tickprefix': '$'
+    })
     
-    # Special handling for subplots: titles are manual
-    _apply_standard_theme(
-        fig, 
-        "Profit Analysis by Discount", 
-        "Comparison of average profit and margin across discount segments",
-        "Discount Range",
-        "Economic Value ($ / %)"
-    )
+
+    _apply_x_axis_customization(fig, x_label="Rango de Descuentos", row_id=1, column_id=2, x_axis_label_distance=-0.2)
+    _apply_y_axis_customization(fig, y_label="Margen de Ganancia (%)", row_id=1, column_id=2, y_axis_style={
+        'showgrid': False,
+        'title': '',
+        'showline': True,
+        'linewidth': 2,
+        'linecolor': COLOR_LINE,
+        'ticks': 'outside',
+        'tickwidth': 2,
+        'tickcolor': COLOR_LINE,
+        'zeroline': True,
+        'tickformat': '.0f',
+        'ticksuffix': '%'
+    })
+
     return fig
+
 
 
 # =============================================================================
@@ -349,7 +481,7 @@ def plot_lollipop(agg_margin_by_cat, selected_categories=None):
                 y=cat_data["Avg_Profit_Margin_Pct"],
                 mode="markers+text",
                 marker=dict(
-                    size=22,
+                    size=40,
                     color=CATEGORY_COLORS.get(category, "#333"),
                     line=dict(color="white", width=1.5),
                 ),
@@ -365,23 +497,41 @@ def plot_lollipop(agg_margin_by_cat, selected_categories=None):
 
     _apply_standard_theme(
         fig,
-        "Profit Margin by Category",
-        "Distribution of margins per category across discount ranges",
-        "Discount Range",
-        "Profit Margin (%)"
+        "Margen de Ganancia por cada Categoría del Inventario",
+        "Durante el periodo 2014-2017, todas las categorías comerciales de Superstore muestran un decrecimiento<br>del porcentaje de ganancia a medida que el descuento supera el 30%."
     )
     fig.update_layout(
-        height=500,
         hovermode="closest",
         legend=dict(
-            title="Category", orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            title="Categoría",
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            itemdoubleclick=False,
+            itemclick=False,
         ),
     )
+
+    _apply_x_axis_customization(fig, x_label="Rango de Descuentos",x_tick_labels=DISCOUNT_LABELS, x_ticks=list(range(len(DISCOUNT_LABELS))), tick_angle=0)
+    _apply_y_axis_customization(fig, y_label="Margen de Ganancia Promedio (%)", y_axis_style={
+        'showgrid': False,
+        'showline': True,
+        'linewidth': 2,
+        'linecolor': COLOR_LINE,
+        'ticks': 'outside',
+        'tickwidth': 2,
+        'tickcolor': COLOR_LINE,
+        'zeroline': True,
+        'tickformat': '.0f',
+        'ticksuffix': '%'
+    }, y_axis_lable_distance=-0.07)
     return fig
 
 
 # =============================================================================
-# Charts - Line
+# Charts - Heatmap
 # =============================================================================
 
 def plot_heatmap(agg_margin_by_subcat, selected_subcats=None, top_n=None):
@@ -402,6 +552,17 @@ def plot_heatmap(agg_margin_by_subcat, selected_subcats=None, top_n=None):
     # Ensure columns are in correct order from DISCOUNT_LABELS
     pivot_df = pivot_df.reindex(columns=DISCOUNT_LABELS)
 
+
+    text_array = []
+    for i, row in enumerate(pivot_df.values):
+        text_row = []
+        for j, val in enumerate(row):
+            if pd.isna(val):
+                text_row.append("")  # Empty string for NaN
+            else:
+                text_row.append(f"{val:.0f}%")
+        text_array.append(text_row)
+
     fig = go.Figure(data=go.Heatmap(
         z=pivot_df.values,
         x=pivot_df.columns,
@@ -411,18 +572,20 @@ def plot_heatmap(agg_margin_by_subcat, selected_subcats=None, top_n=None):
         colorbar=dict(title="Margin %"),
         hovertemplate="<b>%{y}</b><br>Discount: %{x}<br>Margin: %{z:.2f}%<extra></extra>",
         xgap=1,
-        ygap=1
+        ygap=1,
+        text=text_array,
+        texttemplate="%{text}",
+        showscale=True
     ))
 
     _apply_standard_theme(
         fig,
         "Profitability Grid by Sub-Category",
         "Heatmap visualization of profit margins across all discount segments and sub-categories",
-        "Discount Range",
-        "Sub-Category"
     )
     
-    fig.update_layout(height=600 if len(pivot_df) > 10 else 400)
+    _apply_x_axis_customization(fig, x_label="Rango de Descuentos", x_tick_labels=DISCOUNT_LABELS, x_ticks=list(range(len(DISCOUNT_LABELS))), tick_angle=0)
+    _apply_y_axis_customization(fig, y_label="Sub-Categorías", y_axis_lable_distance=-0.1)
     return fig
 
 
@@ -475,7 +638,7 @@ def plot_scatter_category(agg_data, min_sales=None, margin_range=None):
             bordercolor=COLOR_BG,
             borderwidth=1,
             borderpad=4,
-            x=0.1
+            x=0.15
         )
     )
 
@@ -499,8 +662,8 @@ def plot_scatter_category(agg_data, min_sales=None, margin_range=None):
     )
 
     # Add color legend box in top right corner
-    legend_x_start = 0.15
-    legend_y_start = 1.06
+    legend_x_start = 0.05
+    legend_y_start = 1.02
     box_height = 0.03
     box_width = 0.04
     spacing = 0.01
@@ -574,16 +737,41 @@ def plot_scatter_category(agg_data, min_sales=None, margin_range=None):
     _apply_standard_theme(
         fig,
         "Comparativo de Rentabilidad en base al Porcentaje de Ganancia vs Ventas Totales",
-        "Durante el periodo 2014-2017, <b>Technology</b> fue la categoría con las mayores ventas de $690K y el mejor margen ganancia promedio de 18.62%",
-        "Ventas Totales ($)",
-        "Margen de Ganancia Promedio (%)"
+        "Durante el periodo 2014-2017, <b>Technology</b> fue la categoría con las mayores ventas de $690K y el mejor margen ganancia promedio de 18.62%"
     )
+
+    _apply_x_axis_customization(fig, x_label="Ventas Totales ($)", x_axis_style={
+        'showgrid': False,
+        'showline': True,
+        'linewidth': 2,
+        'linecolor': COLOR_LINE,
+        'ticks': 'outside',
+        'tickwidth': 2,
+        'tickcolor': COLOR_LINE,
+        'zeroline': True,
+        'tickformat': ',.0f',
+        'title_standoff': 15
+    }, x_axis_label_distance=-0.1)
+    _apply_y_axis_customization(fig, y_label='Margen de Ganancia Promedio (%)', y_axis_style={
+        'showgrid': False,
+        'showline': True,
+        'linewidth': 2,
+        'linecolor': COLOR_LINE,
+        'ticks': 'outside',
+        'tickwidth': 2,
+        'tickcolor': COLOR_LINE,
+        'zeroline': True,
+        'tickformat': ',.0f',
+        'title_standoff': 15}, y_axis_lable_distance=-0.05)
+
     fig.update_layout(
-        height=700,
         hovermode="closest",
+        height=1000,
         showlegend=True,
         xaxis={
-            'zeroline':False
+            'zeroline':False,
+            'tickformat':',.0f',
+            'tickprefix':'$'
         },
         yaxis={
             'zeroline':False,
@@ -674,8 +862,8 @@ def plot_scatter_subcategory(agg_data, cat_filter=None, min_sales=None, margin_r
     )
 
     # Add color legend box in top right corner
-    legend_x_start = 0.15
-    legend_y_start = 1.05
+    legend_x_start = 0.1
+    legend_y_start = 1.02
     box_height = 0.03
     box_width = 0.04
     spacing = 0.01
@@ -748,16 +936,39 @@ def plot_scatter_subcategory(agg_data, cat_filter=None, min_sales=None, margin_r
 
     _apply_standard_theme(
         fig,
-        "Granular Performance Analysis",
-        "Detailed performance metrics for individual product types",
-        "Total Sales ($)",
-        "Profit Margin (%)"
+        "Comparativo de Rentabilidad en base al Porcentaje de Ganancia vs Ventas Totales por Subcategoría",
+        "Durante el periodo 2014-2017, la subcategoría <b>Paper</b> dentro de la categoría Office Supplies muestra un desempeño óptimo con ventas totales de $65K y un margen de ganancia promedio del 43.58%."
     )
+
+    _apply_x_axis_customization(fig, x_label="Ventas Totales ($)", x_axis_style={
+        'showgrid': False,
+        'showline': True,
+        'linewidth': 2,
+        'linecolor': COLOR_LINE,
+        'ticks': 'outside',
+        'tickwidth': 2,
+        'tickcolor': COLOR_LINE,
+        'zeroline': True,
+        'tickformat': ',.0f',
+        'title_standoff': 15
+    }, x_axis_label_distance=-0.1)
+    _apply_y_axis_customization(fig, y_label='Margen de Ganancia (%)', y_axis_style={
+        'showgrid': False,
+        'showline': True,
+        'linewidth': 2,
+        'linecolor': COLOR_LINE,
+        'ticks': 'outside',
+        'tickwidth': 2,
+        'tickcolor': COLOR_LINE,
+        'zeroline': True,
+        'tickformat': ',.0f',
+        'title_standoff': 15
+    }, y_axis_lable_distance=-0.05)
     fig.update_layout(
-        height=700,
+        height=1000,
         hovermode="closest",
         showlegend=True,
-        xaxis={'zeroline': False},
+        xaxis={'zeroline': False, 'tickformat':',.0f','tickprefix':'$'},
         yaxis={
             'zeroline': False,
             'tickformat': '.0f',
@@ -776,7 +987,7 @@ def init_user_state() -> None:
     if "user_initialized" not in st.session_state:
         st.session_state.user_initialized = True
         st.session_state.active_filters = {}
-        st.session_state.selected_view = "Overview"
+        st.session_state.selected_view = "Visión Rentabilidad por Descuentos"
         st.session_state.prepared_data = None
         st.session_state.filtered_data = None
         st.session_state.aggregations = {}
@@ -801,16 +1012,16 @@ def initialize_dashboard():
 
 def render_sidebar(data: pd.DataFrame | None):
     """Render sidebar controls."""
-    st.sidebar.title("Dashboard Controls")
-    st.sidebar.markdown("Configure filters and views here.")
+    st.sidebar.title("Controles de Filtros Generales")
+    st.sidebar.markdown("Filtros generales para toda la dashboardoard. Estos filtros afectan a todas las visualizaciones y permiten segmentar los datos por tiempo, región, mecanismo de envío, y ubicación geográfica del cliente.")
 
     # --- Global Filters ---
-    st.sidebar.subheader("Date Range Filters")
+    st.sidebar.subheader("Filtros Temporales")
     time_field = st.sidebar.radio(
-        "Filter Time By", ["Order Date", "Ship Date"], index=0, key="time_by"
+        "Filtrar Fechas Mediante", ["Order Date", "Ship Date"], index=0, key="time_by"
     )
     enable_filter = st.sidebar.checkbox(
-        "Enable date filter", value=True, key="enable_date_filter"
+        "Activar/Desactivar Filtro de Fechas", value=True, key="enable_date_filter"
     )
 
     date_range = None
@@ -825,7 +1036,7 @@ def render_sidebar(data: pd.DataFrame | None):
             max_date = max_ts.date()
         default_start = max(min_date, max_date - timedelta(days=30))
         date_range = st.sidebar.date_input(
-            f"Select {time_field} Range",
+            f"Seleccione un rango de {time_field}",
             value=(default_start, max_date),
             min_value=min_date,
             max_value=max_date,
@@ -833,7 +1044,7 @@ def render_sidebar(data: pd.DataFrame | None):
         )
     elif enable_filter:
         date_range = st.sidebar.date_input(
-            "Select Date Range",
+            "Seleccione un rango de fechas",
             value=(
                 datetime.date.today(),
                 datetime.date.today() + datetime.timedelta(days=1),
@@ -843,23 +1054,25 @@ def render_sidebar(data: pd.DataFrame | None):
 
     st.sidebar.markdown("---")
 
+    st.sidebar.subheader("Filtros Categóricos")
+
     # --- Categorical Filters ---
     if data is not None:
         region_opts = sorted(data["Region"].dropna().unique().tolist())
         region_sel = st.sidebar.multiselect(
-            "Region", options=region_opts, default=region_opts, key="filter_region"
+            "Región", options=region_opts, default=region_opts, key="filter_region"
         )
 
         ship_opts = sorted(data["Ship Mode"].dropna().unique().tolist())
         ship_sel = st.sidebar.multiselect(
-            "Ship Mode", options=ship_opts, default=ship_opts, key="filter_ship_mode"
+            "Modo de Envio", options=ship_opts, default=ship_opts, key="filter_ship_mode"
         )
 
         st.sidebar.markdown("---")
-        with st.sidebar.expander("Geographic Filters", expanded=False):
+        with st.sidebar.expander("Filtros Geográficos", expanded=False):
             country_opts = sorted(data["Country"].dropna().unique().tolist())
             country_sel = st.multiselect(
-                "Country", options=country_opts, default=country_opts, key="filter_country"
+                "País del Registro", options=country_opts, default=country_opts, key="filter_country"
             )
 
             if country_sel:
@@ -870,7 +1083,7 @@ def render_sidebar(data: pd.DataFrame | None):
             else:
                 state_opts = sorted(data["State"].dropna().unique().tolist())
             state_sel = st.multiselect(
-                "State", options=state_opts, default=state_opts, key="filter_state"
+                "Estado del Registro (Si Aplica)", options=state_opts, default=state_opts, key="filter_state"
             )
 
             if state_sel:
@@ -886,7 +1099,7 @@ def render_sidebar(data: pd.DataFrame | None):
             else:
                 city_opts = sorted(data["City"].dropna().unique().tolist())
             city_sel = st.multiselect(
-                "City", options=city_opts, default=city_opts, key="filter_city"
+                "Ciudad del Registro", options=city_opts, default=city_opts, key="filter_city"
             )
     else:
         region_sel = ship_sel = country_sel = state_sel = city_sel = []
@@ -914,85 +1127,107 @@ def render_sidebar(data: pd.DataFrame | None):
 
 def render_tab_overview(data: pd.DataFrame, aggs: dict):
       """Tab 1: Overview with Waterfall, Lollipop, Line charts."""
-      st.markdown("## Key Visualizations")
+      st.html(
+        """
+        <h2> Exploración de la Rentabilidad por Descuentos Aplicados </h2>
+        <small><i>Este dashboard permite explorar la relación entre la rentabilidad y el porcentaje de descuento categoría y subcategoría 
+        del minorista Superstore Giant. Se pueden aplicar filtros para analizar diferentes segmentos del negocio, mecanismos de envío, y datos geográficos
+        de los clientes.</i></small>
+        """
+      )
 
-      # --- KPI Cards (3-Column) ---
+      # --- KPI Cards (2 rows layout) ---
       st.markdown("### Key Performance Indicators")
-      c1, c2, c3 = st.columns(3)
+      # First row: 2 KPI cards
+      c1, c2 = st.columns(2)
       with c1:
           st.info("KPI Placeholder 1: Total Revenue")
       with c2:
           st.info("KPI Placeholder 2: Profit Margin (%)")
+      
+      # Second row: 3 KPI cards
+      c3, c4, c5 = st.columns(3)
       with c3:
           st.info("KPI Placeholder 3: Unique Customers")
+      with c4:
+          st.info("KPI Placeholder 4: Average Order Value")
+      with c5:
+          st.info("KPI Placeholder 5: Total Orders")
 
-      # --- Row 1: Waterfall ---
-      with st.expander("Waterfall Charts", expanded=True):
-          st.info("Waterfall charts show average profit and profit margin by discount range.")
-          if not aggs.get("profit_by_discount", pd.DataFrame()).empty:
-              st.plotly_chart(
-                  plot_waterfall(
-                      aggs["profit_by_discount"], aggs["margin_by_discount"]
-                  ),
-                  use_container_width=True,
+      # --- Waterfall ---
+      st.markdown("### Profit Analysis by Discount Range")
+      if not aggs.get("profit_by_discount", pd.DataFrame()).empty:
+          st.plotly_chart(
+              plot_waterfall(
+                  aggs["profit_by_discount"], aggs["margin_by_discount"]
+              ),
+              use_container_width=True,
+              config={
+                  "displaylogo": False,
+                  "displayModeBar": False}
+          )
+
+      # --- Lollipop ---
+      st.markdown("### Profit Margin by Category")
+      # KPI Cards (2-Column)
+      c1, c2 = st.columns(2)
+      with c1:
+          st.info("KPI Placeholder: Highest Margin Category")
+      with c2:
+          st.info("KPI Placeholder: Top Selling Category")
+
+      # Local filter in mosaic layout
+      f1, f2 = st.columns([2, 1])
+      with f1:
+          all_cats = sorted(data["Category"].dropna().unique().tolist())
+          sel_cats = st.multiselect(
+              "Select Categories",
+              options=all_cats,
+              default=all_cats,
+              key="lollipop_cats",
+          )
+      with f2:
+          st.caption("Detailed Category View")
+          st.write(f"Showing **{len(sel_cats)}** of **{len(all_cats)}** categories.")
+      if not aggs.get("margin_by_category", pd.DataFrame()).empty:
+          st.plotly_chart(
+              plot_lollipop(aggs["margin_by_category"], sel_cats),
+              use_container_width=True,
+              config={
+                  "displaylogo": False,
+                  "displayModeBar": False}
+          )
+
+      # --- Heatmap ---
+      st.markdown("### Profitability Grid by Sub-Category")
+      # KPI Cards (2-Column)
+      c1, c2 = st.columns(2)
+      with c1:
+          st.info("KPI Placeholder: Best Performing Sub-Category")
+      with c2:
+          st.info("KPI Placeholder: Slowest Growing Sub-Category")
+
+      # Select All option in mosaic layout
+      f1, f2 = st.columns([2, 1])
+      with f1:
+          all_subs = sorted(data["Sub-Category"].dropna().unique().tolist())
+          if st.toggle("Select All Sub-Categories", value=True, key="line_select_all"):
+              sel_subs = all_subs
+          else:
+              sel_subs = st.multiselect(
+                  "Select Sub-Categories", options=all_subs, default=[], key="line_subs"
               )
+      with f2:
+          top_n = st.number_input("Show Top N", min_value=1, value=5, key="line_top_n")
 
-      # --- Row 2: Lollipop ---
-      with st.expander("Lollipop Charts", expanded=True):
-          st.markdown("#### Filter by Category")
-          # KPI Cards (2-Column)
-          c1, c2 = st.columns(2)
-          with c1:
-              st.info("KPI Placeholder: Highest Margin Category")
-          with c2:
-              st.info("KPI Placeholder: Top Selling Category")
-
-          # Local filter in mosaic layout
-          f1, f2 = st.columns([2, 1])
-          with f1:
-              all_cats = sorted(data["Category"].dropna().unique().tolist())
-              sel_cats = st.multiselect(
-                  "Select Categories",
-                  options=all_cats,
-                  default=all_cats,
-                  key="lollipop_cats",
-              )
-          with f2:
-              st.caption("Detailed Category View")
-              st.write(f"Showing **{len(sel_cats)}** of **{len(all_cats)}** categories.")
-          if not aggs.get("margin_by_category", pd.DataFrame()).empty:
-              st.plotly_chart(
-                  plot_lollipop(aggs["margin_by_category"], sel_cats),
-                  use_container_width=True,
-              )
-
-      # --- Row 3: Heatmap ---
-      with st.expander("Profitability Heatmap", expanded=True):
-          st.markdown("#### Filter by Sub-Category")
-          # KPI Cards (2-Column)
-          c1, c2 = st.columns(2)
-          with c1:
-              st.info("KPI Placeholder: Best Performing Sub-Category")
-          with c2:
-              st.info("KPI Placeholder: Slowest Growing Sub-Category")
-
-          # Select All option in mosaic layout
-          f1, f2 = st.columns([2, 1])
-          with f1:
-              all_subs = sorted(data["Sub-Category"].dropna().unique().tolist())
-              if st.toggle("Select All Sub-Categories", value=True, key="line_select_all"):
-                  sel_subs = all_subs
-              else:
-                  sel_subs = st.multiselect(
-                      "Select Sub-Categories", options=all_subs, default=[], key="line_subs"
-                  )
-          with f2:
-              top_n = st.number_input("Show Top N", min_value=1, value=5, key="line_top_n")
-
-          if not aggs.get("margin_by_subcategory", pd.DataFrame()).empty:
-              fig = plot_heatmap(aggs["margin_by_subcategory"], sel_subs, top_n if not st.session_state.get("line_select_all") else None)
-              if fig:
-                  st.plotly_chart(fig, use_container_width=True)
+      if not aggs.get("margin_by_subcategory", pd.DataFrame()).empty:
+          fig = plot_heatmap(aggs["margin_by_subcategory"], sel_subs, top_n if not st.session_state.get("line_select_all") else None)
+          if fig:
+              st.plotly_chart(fig, use_container_width=True, config={
+                  "displaylogo": False,
+                  "displayModeBar": False,
+                  'modeBarButtonsToRemove': ['toImage','resetScale2d','fullscreen']
+              })
 
 
 def render_tab_scatter(data: pd.DataFrame, aggs: dict):
@@ -1173,7 +1408,9 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
             aggs["by_category"], min_sales, margin_range
         )
         if fig:
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, config={
+                      "displaylogo": False,
+                      "displayModeBar": False})
 
     st.markdown("---")
 
@@ -1264,7 +1501,9 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
             aggs["by_subcategory"], cat_filter, min_sales_sub, margin_range_sub, top_n
         )
         if fig:
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, config={
+                      "displaylogo": False,
+                      "displayModeBar": False})
 
 
 def render_tab_data(data: pd.DataFrame, aggs: dict):
@@ -1312,7 +1551,7 @@ def main():
     aggregations = get_aggregations(filtered)
 
     # Tabbed layout
-    tabs = st.tabs(["Overview", "Scatter Plots", "Data"])
+    tabs = st.tabs(["Visión Rentabilidad por Descuentos", "Visión Rentabilidad por Categoría y Subcategoría", "Visión Datos Usados"])
 
     with tabs[0]:
         render_tab_overview(filtered, aggregations)
