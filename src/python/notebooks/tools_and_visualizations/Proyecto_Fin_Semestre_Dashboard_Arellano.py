@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from matplotlib.pyplot import ticklabel_format
 from plotly.subplots import make_subplots
 
 
@@ -14,6 +15,8 @@ from plotly.subplots import make_subplots
 
 COLOR_POSITIVE = "#A4A4A4"
 COLOR_NEGATIVE = "#E01518"
+COLOR_WARNING = '#F2AE30'
+COLOR_ATTENTION = '#13678A'
 COLOR_BG = "#F2F2F4"
 COLOR_LINE = "#5A5A5C"
 COLOR_GREEN_DARK = "#6E8C03"
@@ -111,7 +114,7 @@ def _apply_standard_theme(fig, title, subtitle, x_label, y_label, x_rotation=30)
     # Bottom aligned Y title annotation
     fig.add_annotation(
         xref="paper", yref="paper",
-        x=-0.12, y=0,
+        x=-0.05, y=0,
         text=y_label,
         showarrow=False,
         textangle=-90,
@@ -122,7 +125,7 @@ def _apply_standard_theme(fig, title, subtitle, x_label, y_label, x_rotation=30)
     # Left aligned X title annotation
     fig.add_annotation(
         xref="paper", yref="paper",
-        x=0, y=-0.18,
+        x=0, y=-0.12,
         text=x_label,
         showarrow=False,
         xanchor="left",
@@ -446,20 +449,100 @@ def plot_scatter_category(agg_data, min_sales=None, margin_range=None):
 
     def assign_color(row):
         if row["Profit_Margin_Pct"] > avg_margin and row["Total_Sales"] > avg_sales:
-            return COLOR_GREEN
+            return COLOR_GREEN  # High margin, high sales - optimal
         elif row["Profit_Margin_Pct"] < avg_margin and row["Total_Sales"] < avg_sales:
-            return COLOR_RED
-        return COLOR_GREY
+            return COLOR_RED  # Low margin, low sales - poor performance
+        elif row["Profit_Margin_Pct"] < avg_margin and row["Total_Sales"] > avg_sales:
+            return COLOR_WARNING  # High sales but low margin - needs attention
+        else:  # row["Profit_Margin_Pct"] > avg_margin and row["Total_Sales"] < avg_sales
+            return COLOR_ATTENTION  # High margin but low sales - growth opportunity
 
     data["Color"] = data.apply(assign_color, axis=1)
 
     fig = go.Figure()
     fig.add_hline(
-        y=avg_margin, line_dash="dash", line_color=COLOR_LINE, line_width=1, opacity=0.5
+        y=avg_margin,
+        line_dash='dash',
+        line_color=COLOR_LINE,
+        line_width=1,
+        opacity=0.5,
+        annotation_text=f"Porcentaje de<br>Ganancia Promedio: <b>{avg_margin:.1f}%</b>",
+        annotation_position="left",
+        annotation_align='left',
+        annotation=dict(
+            font=dict(size=10, color=COLOR_LINE, family="Arial",style='italic'),
+            bgcolor="white",
+            bordercolor=COLOR_BG,
+            borderwidth=1,
+            borderpad=4,
+            x=0.1
+        )
     )
+
     fig.add_vline(
-        x=avg_sales, line_dash="dash", line_color=COLOR_LINE, line_width=1, opacity=0.5
+        x=avg_sales,
+        line_dash="dash",
+        line_color=COLOR_LINE,
+        line_width=1,
+        opacity=0.5,
+        annotation_text=f"Ventas Totales Promedio: <b>${avg_sales:,.0f}</b>",
+        annotation_position="top",
+        annotation_align='left',
+        annotation=dict(
+            font=dict(size=10, color=COLOR_LINE, family="Arial", style='italic'),
+            bgcolor="white",
+            bordercolor=COLOR_BG,
+            borderwidth=1,
+            borderpad=4,
+            y=0.95
+        )
     )
+
+    # Add color legend box in top right corner
+    legend_x_start = 0.15
+    legend_y_start = 1.06
+    box_height = 0.03
+    box_width = 0.04
+    spacing = 0.01
+
+    legend_items = [
+        (COLOR_GREEN, "Margen Alto y Ventas Altas"),
+        (COLOR_ATTENTION, "Margen Alto y Ventas Bajas"),
+        (COLOR_WARNING, "Margen Bajo y Ventas Altas"),
+        (COLOR_RED, "Margen Bajo y Ventas Bajas")
+    ]
+
+    current_x = legend_x_start
+    for idx, (color, label) in enumerate(legend_items):
+        # Add colored box
+        fig.add_shape(
+            type="rect",
+            xref="paper", yref="paper",
+            x0=current_x, y0=legend_y_start - box_height,
+            x1=current_x + box_width, y1=legend_y_start,
+            fillcolor=color,
+            line=dict(color=COLOR_LINE, width=1)
+        )
+
+        # Add text label
+        fig.add_annotation(
+            xref="paper", yref="paper",
+            x=current_x + box_width + 0.005,
+            y=legend_y_start - box_height / 2,
+            text=label,
+            showarrow=False,
+            xanchor="left",
+            yanchor="middle",
+            font=dict(size=10, color=COLOR_LINE, family="Arial"),
+            bgcolor="white",
+            bordercolor=COLOR_BG,
+            borderwidth=1,
+            borderpad=3
+        )
+
+        # Calculate width of text annotation (approximate)
+        text_width = len(label) * 0.006  # Rough estimate
+        current_x += box_width + text_width + spacing
 
     for _, row in data.iterrows():
         fig.add_trace(
@@ -477,29 +560,37 @@ def plot_scatter_category(agg_data, min_sales=None, margin_range=None):
                 textposition="top center",
                 textfont=dict(size=12, color="black", family="Arial Black"),
                 name=row["Category"],
-                showlegend=True,
+                showlegend=False,
                 hovertemplate=(
                     f"<b>{row['Category']}</b><br>"
-                    f"Sales: ${row['Total_Sales']:,.2f}<br>"
-                    f"Margin: {row['Profit_Margin_Pct']:.2f}%<br>"
-                    f"Avg Sale/Cust: ${row['Avg_Sale_Per_Customer']:.2f}<br>"
-                    f"Customers: {row['Unique_Customers']}<extra></extra>"
+                    f"<b>Total de Ventas</b>: ${row['Total_Sales']:,.2f}<br>"
+                    f"<b>Margen de Ganancia Promedio</b>: {row['Profit_Margin_Pct']:.2f}%<br>"
+                    f"<b>Venta Promedio por Cliente</b>: ${row['Avg_Sale_Per_Customer']:.2f}<br>"
+                    f"<b>Clientes Totales</b>: {row['Unique_Customers']}<extra></extra>"
                 ),
             )
         )
 
     _apply_standard_theme(
         fig,
-        "Strategic Category Positioning",
-        "Market positioning based on sales volume and profit margin efficiency",
-        "Total Sales ($)",
-        "Profit Margin (%)"
+        "Comparativo de Rentabilidad en base al Porcentaje de Ganancia vs Ventas Totales",
+        "Durante el periodo 2014-2017, <b>Technology</b> fue la categoría con las mayores ventas de $690K y el mejor margen ganancia promedio de 18.62%",
+        "Ventas Totales ($)",
+        "Margen de Ganancia Promedio (%)"
     )
     fig.update_layout(
         height=700,
         hovermode="closest",
         showlegend=True,
-        legend=dict(title="Category", yanchor="top", y=0.99, xanchor="right", x=0.99),
+        xaxis={
+            'zeroline':False
+        },
+        yaxis={
+            'zeroline':False,
+            'tickformat': '.0f',
+            'ticksuffix': '%'
+
+        }
     )
     return fig
 
@@ -530,19 +621,103 @@ def plot_scatter_subcategory(agg_data, cat_filter=None, min_sales=None, margin_r
         return None
 
     avg_sales = agg_data_filtered["Total_Sales"].mean()
+    avg_margin = agg_data_filtered["Profit_Margin_Pct"].mean()
 
     def assign_color(row):
-        if row["Profit_Margin_Pct"] > 0 and row["Total_Sales"] > avg_sales:
-            return COLOR_GREEN
-        elif row["Profit_Margin_Pct"] < 0:
-            return COLOR_RED
-        return COLOR_GREY
+        if row["Profit_Margin_Pct"] > avg_margin and row["Total_Sales"] > avg_sales:
+            return COLOR_GREEN  # High margin, high sales - optimal
+        elif row["Profit_Margin_Pct"] < avg_margin and row["Total_Sales"] < avg_sales:
+            return COLOR_RED  # Low margin, low sales - poor performance
+        elif row["Profit_Margin_Pct"] < avg_margin and row["Total_Sales"] > avg_sales:
+            return COLOR_WARNING  # High sales but low margin - needs attention
+        else:  # row["Profit_Margin_Pct"] > avg_margin and row["Total_Sales"] < avg_sales
+            return COLOR_ATTENTION  # High margin but low sales - growth opportunity
 
     agg_data_filtered["Color"] = agg_data_filtered.apply(assign_color, axis=1)
 
+
     fig = go.Figure()
-    fig.add_hline(y=0, line_dash="dash", line_color=COLOR_LINE, line_width=1, opacity=0.5)
-    fig.add_vline(x=avg_sales, line_dash="dash", line_color=COLOR_LINE, line_width=1, opacity=0.5)
+    fig.add_hline(
+        y=avg_margin,
+        line_dash='dash',
+        line_color=COLOR_LINE,
+        line_width=1,
+        opacity=0.5,
+        annotation_text=f"Avg Margin: {avg_margin:.1f}%",
+        annotation_position="left",
+        annotation=dict(
+            font=dict(size=10, color=COLOR_LINE, family="Arial"),
+            bgcolor="white",
+            bordercolor=COLOR_BG,
+            borderwidth=1,
+            borderpad=4,
+            x=0.1
+        )
+    )
+
+    fig.add_vline(
+        x=avg_sales,
+        line_dash="dash",
+        line_color=COLOR_LINE,
+        line_width=1,
+        opacity=0.5,
+        annotation_text=f"Avg Sales: ${avg_sales:,.0f}",
+        annotation_position="top",
+        annotation=dict(
+            font=dict(size=10, color=COLOR_LINE, family="Arial"),
+            bgcolor="white",
+            bordercolor=COLOR_BG,
+            borderwidth=1,
+            borderpad=4,
+            y=0.95
+        )
+    )
+
+    # Add color legend box in top right corner
+    legend_x_start = 0.15
+    legend_y_start = 1.05
+    box_height = 0.03
+    box_width = 0.04
+    spacing = 0.01
+
+    legend_items = [
+        (COLOR_GREEN, "High Margin & High Sales"),
+        (COLOR_ATTENTION, "High Margin & Low Sales"),
+        (COLOR_WARNING, "Low Margin & High Sales"),
+        (COLOR_RED, "Low Margin & Low Sales")
+    ]
+
+    current_x = legend_x_start
+    for idx, (color, label) in enumerate(legend_items):
+        # Add colored box
+        fig.add_shape(
+            type="rect",
+            xref="paper", yref="paper",
+            x0=current_x, y0=legend_y_start - box_height,
+            x1=current_x + box_width, y1=legend_y_start,
+            fillcolor=color,
+            line=dict(color=COLOR_LINE, width=1)
+        )
+
+        # Add text label
+        fig.add_annotation(
+            xref="paper", yref="paper",
+            x=current_x + box_width + 0.005,
+            y=legend_y_start - box_height / 2,
+            text=label,
+            showarrow=False,
+            xanchor="left",
+            yanchor="middle",
+            font=dict(size=9, color=COLOR_LINE, family="Arial"),
+            bgcolor="white",
+            bordercolor=COLOR_BG,
+            borderwidth=1,
+            borderpad=3
+        )
+
+        # Calculate width of text annotation (approximate)
+        text_width = len(label) * 0.006  # Rough estimate
+        current_x += box_width + text_width + spacing
 
     for _, row in agg_data_filtered.iterrows():
         fig.add_trace(
@@ -560,7 +735,7 @@ def plot_scatter_subcategory(agg_data, cat_filter=None, min_sales=None, margin_r
                 textposition="top center",
                 textfont=dict(size=11, color="black"),
                 name=row["Sub_Category"],
-                showlegend=True,
+                showlegend=False,
                 hovertemplate=(
                     f"<b>{row['Sub_Category']}</b><br>"
                     f"Sales: ${row['Total_Sales']:,.2f}<br>"
@@ -582,8 +757,14 @@ def plot_scatter_subcategory(agg_data, cat_filter=None, min_sales=None, margin_r
         height=700,
         hovermode="closest",
         showlegend=True,
-        legend=dict(title="Sub-Category", yanchor="top", y=0.99, xanchor="right", x=0.99),
+        xaxis={'zeroline': False},
+        yaxis={
+            'zeroline': False,
+            'tickformat': '.0f',
+            'ticksuffix': '%'
+        }
     )
+
     return fig
 
 
@@ -816,55 +997,274 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
 
 def render_tab_scatter(data: pd.DataFrame, aggs: dict):
     """Tab 2: Scatter Plots."""
-    st.markdown("## Scatter Plots")
+    st.html("""
+    
+    <h2> Exploración de la Rentabilidad vs Volúmen de Ventas por Categoría y Subcategoría </h2>
+    
+    <small><i>Este dashboard permite explorar la relación entre la rentabilidad y el volumen de ventas de cada categoría y subcategoría 
+    del minorista Superstore Giant. Se pueden aplicar filtros para analizar diferentes segmentos del negocio, mecanismos de envío, y datos geográficos
+    de los clientes.</i></small>
+    """)
+
+    # --- Top KPI Cards: Profit Margin Analysis (3-Column) ---
+    st.html("""
+    <div style='display:flex; align-items:center; gap:10px; margin:5px; justify-content:center'>
+        <h3>Resultados Generales del análisis de Márgenes de Ganancia</h3>
+    </div>
+    """)
+    subcat_data = None
+
+    if not aggs.get("by_subcategory", pd.DataFrame()).empty:
+        subcat_data = aggs["by_subcategory"]
+
+        # Best margin
+        best_margin = subcat_data.loc[subcat_data["Profit_Margin_Pct"].idxmax()]
+        # Average margin
+        avg_margin = subcat_data["Profit_Margin_Pct"].mean()
+        # Worst margin
+        worst_margin = subcat_data.loc[subcat_data["Profit_Margin_Pct"].idxmin()]
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown(f"""
+            <div style="background-color: {COLOR_ATTENTION}; padding: 20px; border-radius: 10px; color: white;">
+                <h4 style="margin: 0; color: white;">Ganancia Porcentual más Alta por Subcategoría</h4>
+                <h2 style="margin: 10px 0; color: white;">{best_margin['Profit_Margin_Pct']:.2f}%</h2>
+                <p style="margin: 5px 0; color: white;"><strong>{best_margin['Sub_Category']}</strong></p>
+                <p style="margin: 5px 0; color: white;">Categoría: {best_margin['Category']}</p>
+                <p style="margin: 5px 0; color: white;">Ventas Totales: ${best_margin['Total_Sales']:,.2f}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c2:
+            st.markdown(f"""
+            <div style="background-color: {COLOR_GREY}; padding: 20px; border-radius: 10px; color: white;">
+                <h4 style="margin: 0; color: white;">Ganancia Promedio sobre toda Subcategoría</h4>
+                <h2 style="margin: 10px 0; color: white;">{avg_margin:.2f}%</h2>
+                <p style="margin: 5px 0; color: white;">Calculado sobre todas las Subcategorías</p>
+                <p style="margin: 5px 0; color: white;">Total de Subcategorías: {len(subcat_data)}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c3:
+            st.markdown(f"""
+            <div style="background-color: {COLOR_RED}; padding: 20px; border-radius: 10px; color: white;">
+                <h4 style="margin: 0; color: white;">Ganancia Porcentual más Baja por Subcategoría</h4>
+                <h2 style="margin: 10px 0; color: white;">{worst_margin['Profit_Margin_Pct']:.2f}%</h2>
+                <p style="margin: 5px 0; color: white;"><strong>{worst_margin['Sub_Category']}</strong></p>
+                <p style="margin: 5px 0; color: white;">Categoría: {worst_margin['Category']}</p>
+                <p style="margin: 5px 0; color: white;">Ventas Totales: ${worst_margin['Total_Sales']:,.2f}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # --- Second Row KPI Cards: Sales Volume Analysis (3-Column) ---
+    st.html("""
+    <div style='display:flex; align-items:center; gap:10px; margin:5px; justify-content:center'>
+        <h3>Resultados Generales del análisis de Ventas Totales</h3>
+    </div>
+    """)
+
+    if not aggs.get("by_subcategory", pd.DataFrame()).empty:
+        # Highest sales
+        highest_sales = subcat_data.loc[subcat_data["Total_Sales"].idxmax()]
+        # Average sales
+        avg_sales = subcat_data["Total_Sales"].mean()
+        # Lowest sales
+        lowest_sales = subcat_data.loc[subcat_data["Total_Sales"].idxmin()]
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown(f"""
+            <div style="background-color: {COLOR_ATTENTION}; padding: 20px; border-radius: 10px; color: white;">
+                <h4 style="margin: 0; color: white;">Total de Ventas más Alto por Subcategoría</h4>
+                <h2 style="margin: 10px 0; color: white;">${highest_sales['Total_Sales']:,.2f}</h2>
+                <p style="margin: 5px 0; color: white;"><strong>{highest_sales['Sub_Category']}</strong></p>
+                <p style="margin: 5px 0; color: white;">Categoría: {highest_sales['Category']}</p>
+                <p style="margin: 5px 0; color: white;">Margen de Ganancia: {highest_sales['Profit_Margin_Pct']:.2f}%</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c2:
+            st.markdown(f"""
+            <div style="background-color: {COLOR_GREY}; padding: 20px; border-radius: 10px; color: white;">
+                <h4 style="margin: 0; color: white;">Total de Ventas Promedio por Subcategoría</h4>
+                <h2 style="margin: 10px 0; color: white;">${avg_sales:,.2f}</h2>
+                <p style="margin: 5px 0; color: white;">Calculado sobre todas las Subcategorías</p>
+                <p style="margin: 5px 0; color: white;">Ganancia Total: ${subcat_data['Total_Sales'].sum():,.2f}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c3:
+            st.markdown(f"""
+            <div style="background-color: {COLOR_RED}; padding: 20px; border-radius: 10px; color: white;">
+                <h4 style="margin: 0; color: white;">Total de Ventas mas Bajo por Subcategoría</h4>
+                <h2 style="margin: 10px 0; color: white;">${lowest_sales['Total_Sales']:,.2f}</h2>
+                <p style="margin: 5px 0; color: white;"><strong>{lowest_sales['Sub_Category']}</strong></p>
+                <p style="margin: 5px 0; color: white;">Categoría: {lowest_sales['Category']}</p>
+                <p style="margin: 5px 0; color: white;">Margen de Ganancia: {lowest_sales['Profit_Margin_Pct']:.2f}%</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
 
     # --- By Category ---
-    with st.expander("By Category", expanded=True):
-        f1, f2 = st.columns(2)
-        with f1:
-            min_sales = st.number_input(
-                "Min Sales Threshold", value=0, key="scatter_cat_min_sales"
-            )
-        with f2:
-            margin_range = st.slider(
-                "Margin Range (%)", 0, 100, (0, 100), key="scatter_cat_margin"
-            )
+    st.html("""
+    <h3>Exploración de Margen de Ganancia Porcentual vs Total de Ventas por Categoría</h3>
+    """)
+
+    cc1,cc2 = st.columns(2)
+
+    with cc1:
         if not aggs.get("by_category", pd.DataFrame()).empty:
-            fig = plot_scatter_category(
-                aggs["by_category"], min_sales, margin_range
+            cat_data = aggs["by_category"]
+            best_cat = cat_data.loc[cat_data["Profit_Margin_Pct"].idxmax()]
+            st.markdown(f"""
+            <div style="background-color: {COLOR_ATTENTION}; padding: 20px; border-radius: 10px; color: white; margin-bottom: 10px">
+                <p style="margin: 0; color: white;">La categoría más rentable del dataset corresponde a <strong>{best_cat['Category']}</strong> con un margen de <strong>{best_cat['Profit_Margin_Pct']:.2f}%</strong> y ventas totales de <strong>${best_cat['Total_Sales']:,.2f}</strong></p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    with cc2:
+        if not aggs.get("by_category", pd.DataFrame()).empty:
+            cat_data = aggs["by_category"]
+            worst_cat = cat_data.loc[cat_data["Profit_Margin_Pct"].idxmin()]
+            st.markdown(f"""
+            <div style="background-color: {COLOR_WARNING}; padding: 20px; border-radius: 10px; color: white; margin-bottom: 10px">
+                <p style="margin: 0; color: white;">La categoría menos rentable del dataset corresponde a <strong>{worst_cat['Category']}</strong> con un margen de <strong>{worst_cat['Profit_Margin_Pct']:.2f}%</strong> y ventas totales de <strong>${worst_cat['Total_Sales']:,.2f}</strong></p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # Filters
+    f1, f2 = st.columns(2)
+    with f1:
+        if not aggs.get("by_category", pd.DataFrame()).empty:
+            data = aggs.get("by_category", pd.DataFrame())
+            min_sales = int(data["Total_Sales"].min())
+            max_sales = int(data["Total_Sales"].max())
+            min_sales = st.number_input(
+                "Umbral de Ventas Totales Mínimas",
+                value=0,
+                key="scatter_cat_min_sales",
+                min_value=0,
+                max_value=max_sales,
+                step=1000,
+                format='%d',
+                help="Filtro de ventas mínimas para inclusión de categorías en el gráfico"
             )
-            if fig:
-                st.plotly_chart(fig, use_container_width=True)
+        else:
+            min_sales = st.number_input("Umbral de Ventas Totales Mínimas", value=0, key="scatter_cat_min_sales", format='%d')
+    with f2:
+        if not aggs.get("by_category", pd.DataFrame()).empty:
+            data = aggs.get("by_category", pd.DataFrame())
+            min_margin = int(data["Profit_Margin_Pct"].min()) *1.15
+            max_margin = int(data["Profit_Margin_Pct"].max()) *1.15
+            margin_range = st.slider(
+                "Rango de Márgen de Ganancias ",
+                min_value=-100, max_value=100,value=(-100,100), key="scatter_cat_margin",
+                help="Rango de margen de ganancia para inclusión de categorías en el gráfico",
+
+            )
+        else:
+            margin_range = st.slider("Rango de Márgen de Ganancias ", -100, 100, (-100, 100), key="scatter_cat_margin")
+
+    # Chart
+    if not aggs.get("by_category", pd.DataFrame()).empty:
+        fig = plot_scatter_category(
+            aggs["by_category"], min_sales, margin_range
+        )
+        if fig:
+            st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("---")
 
     # --- By Sub-Category ---
-    with st.expander("By Sub-Category", expanded=True):
-        f1, f2 = st.columns(2)
-        with f1:
-            all_cats = sorted(data["Category"].dropna().unique().tolist())
-            cat_filter = st.multiselect(
-                "Filter by Category", options=all_cats, default=[], key="scatter_subcat_cats"
-            )
-            #? Aqui registramos el filtro de categorias en general como una lista con strings
-            print(cat_filter)
-        with f2:
-            top_n = st.number_input("Show Top N by Sales", 1, 20, 10, key="scatter_sub_top_n")
-        
-        f3, f4 = st.columns(2)
-        with f3:
-            min_sales2 = st.number_input(
-                "Min Sales Threshold", value=0, key="scatter_sub_min_sales"
-            )
-        with f4:
-            margin_range2 = st.slider(
-                "Margin Range (%)", 0, 100, (0, 100), key="scatter_sub_margin"
-            )
+    st.html("""
+        <h3>Exploración de Margen de Ganancia Porcentual vs Total de Ventas por Subcategoría</h3>
+        """)
 
+    csub1, csub2 = st.columns(2)
+
+    with csub1:
         if not aggs.get("by_subcategory", pd.DataFrame()).empty:
-            fig = plot_scatter_subcategory(
-                aggs["by_subcategory"], cat_filter, min_sales2, margin_range2, top_n
+            cat_data = aggs["by_subcategory"]
+            best_cat = cat_data.loc[cat_data["Profit_Margin_Pct"].idxmax()]
+            st.markdown(f"""
+                <div style="background-color: {COLOR_ATTENTION}; padding: 20px; border-radius: 10px; color: white; margin-bottom: 10px">
+                    <p style="margin: 0; color: white;">La subcategoría más rentable del dataset corresponde a <strong>{best_cat['Sub_Category']}</strong> con un margen de <strong>{best_cat['Profit_Margin_Pct']:.2f}%</strong> y ventas totales de <strong>${best_cat['Total_Sales']:,.2f}</strong></p>
+                </div>
+                """, unsafe_allow_html=True)
+
+    with csub2:
+        if not aggs.get("by_subcategory", pd.DataFrame()).empty:
+            cat_data = aggs["by_subcategory"]
+            worst_cat = cat_data.loc[cat_data["Profit_Margin_Pct"].idxmin()]
+            st.markdown(f"""
+                <div style="background-color: {COLOR_WARNING}; padding: 20px; border-radius: 10px; color: white; margin-bottom: 10px">
+                    <p style="margin: 0; color: white;">La subcategoría menos rentable del dataset corresponde a <strong>{worst_cat['Sub_Category']}</strong> con un margen de <strong>{worst_cat['Profit_Margin_Pct']:.2f}%</strong> y ventas totales de <strong>${worst_cat['Total_Sales']:,.2f}</strong></p>
+                </div>
+                """, unsafe_allow_html=True)
+
+    # Filters
+    f1, f2 = st.columns(2)
+    with f1:
+        all_cats = sorted(data["Category"].dropna().unique().tolist())
+        cat_filter = st.multiselect(
+            "Filtrar por Categorías de Productos",
+            options=all_cats,
+            default=all_cats,
+            help="Selección múltiple de categorías para incluir en el gráfico",
+            key="scatter_subcat_cats"
+        )
+    with (f2):
+        top_n = st.number_input(
+            "Top N Subcategories por Ventas Totales",
+            1,
+            20,
+            17,
+            key="scatter_sub_top_n",
+            help= "Mostrar las N subcategorías con mayores ventas totales"
+        )
+
+    f3, f4 = st.columns(2)
+    with f3:
+        if not aggs.get("by_subcategory", pd.DataFrame()).empty:
+            data = aggs.get("by_subcategory", pd.DataFrame())
+            min_sales = int(data["Total_Sales"].min())
+            max_sales = int(data["Total_Sales"].max())
+            min_sales_sub = st.number_input(
+                "Umbral de Ventas Totales Mínimas",
+                value=0,
+                key="scatter_subcat_min_sales",
+                min_value=0,
+                max_value=max_sales,
+                step=1000,
+                format='%d',
+                help="Filtro de ventas mínimas para inclusión de categorías en el gráfico"
             )
-            if fig:
-                st.plotly_chart(fig, use_container_width=True)
+        else:
+            min_sales_sub = st.number_input("Umbral de Ventas Totales Mínimas", value=0, key="scatter_subcat_min_sales",
+                                        format='%d')
+    with f4:
+        if not aggs.get("by_subcategory", pd.DataFrame()).empty:
+            data = aggs.get("by_subcategory", pd.DataFrame())
+            min_margin = int(data["Profit_Margin_Pct"].min()) * 1.15
+            max_margin = int(data["Profit_Margin_Pct"].max()) * 1.15
+            margin_range_sub = st.slider(
+                "Rango de Márgen de Ganancias ",
+                min_value=-100, max_value=100, value=(-100, 100), key="scatter_subcat_margin",
+                help="Rango de margen de ganancia para inclusión de categorías en el gráfico",
+
+            )
+        else:
+            margin_range_sub = st.slider("Rango de Márgen de Ganancias ", -100, 100, (-100, 100), key="scatter_subcat_margin")
+
+    # Chart
+    if not aggs.get("by_subcategory", pd.DataFrame()).empty:
+        fig = plot_scatter_subcategory(
+            aggs["by_subcategory"], cat_filter, min_sales_sub, margin_range_sub, top_n
+        )
+        if fig:
+            st.plotly_chart(fig, use_container_width=True)
 
 
 def render_tab_data(data: pd.DataFrame, aggs: dict):
