@@ -17,3 +17,4 @@ altair
 pillow
 statsmodels
 scipy-stubs
+pygments
