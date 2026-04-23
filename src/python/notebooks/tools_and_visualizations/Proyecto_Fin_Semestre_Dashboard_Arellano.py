@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from matplotlib.pyplot import ticklabel_format
 from plotly.subplots import make_subplots
+import os
 
 # =============================================================================
 # Data Preparation & Constants
@@ -27,11 +28,20 @@ COLOR_GREEN = "#6E8C03"
 COLOR_RED = "#E01518"
 COLOR_GREY = "#A4A4A4"
 WHITE = "#FFFFFF"
+COLOR_POS_DARK = "#516D73"
+COLOR_POS_LIGHT = '#C1D4D9'
+COLOR_BROWN_DARK = "#BA9B65"
+COLOR_BROWN_LIGHT = "#F4EFDC"
+COLOR_PURPLE_DARK = "#6F7DA6"
+COLOR_PURPLE_LIGHT = "#C1B3F2"
+COLOR_RED_DARK = "#D9043D"
+COLOR_RED_LIGHT = "#F291A3"
 
+#? Recently Modified -> https://color.adobe.com/search?q=business
 CATEGORY_COLORS = {
-    "Furniture": "#636EFA",      # Blue
-    "Office Supplies": "#FFA15A", # Orange
-    "Technology": "#00CC96",      # Green
+    "Furniture": COLOR_BROWN_DARK,      # Blue
+    "Office Supplies": "#025940", # Green!
+    "Technology": "#3A5898",      # Green
 }
 
 DISCOUNT_BINS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,1.0]
@@ -281,37 +291,37 @@ def _return_color_for_cell_based_on_values(
         avg_sales
 ):
     if profit_margin_to_measure > avg_margin and sales_to_measure > avg_sales:
-        return COLOR_GREEN  # High margin, high sales - optimal
+        return COLOR_GREEN_DARK  # High margin, high sales - optimal
     elif profit_margin_to_measure < avg_margin and sales_to_measure < avg_sales:
         return COLOR_RED  # Low margin, low sales - poor performance
     elif profit_margin_to_measure < avg_margin and sales_to_measure > avg_sales:
-        return COLOR_WARNING  # High sales but low margin - needs attention
+        return COLOR_PURPLE_DARK  # High sales but low margin - needs attention
     else:  # row["Profit_Margin_Pct"] > avg_margin and row["Total_Sales"] < avg_sales
-        return COLOR_ATTENTION  # High margin but low sales - growth opportunity
+        return COLOR_POS_DARK  # High margin but low sales - growth opportunity
 
 
 def _assign_color(row, avg_margin, avg_sales):
     if row["Profit_Margin_Pct"] > avg_margin and row["Total_Sales"] > avg_sales:
-        return COLOR_GREEN  # High margin, high sales - optimal
+        return COLOR_GREEN_DARK  # High margin, high sales - optimal
     elif row["Profit_Margin_Pct"] < avg_margin and row["Total_Sales"] < avg_sales:
         return COLOR_RED  # Low margin, low sales - poor performance
     elif row["Profit_Margin_Pct"] < avg_margin and row["Total_Sales"] > avg_sales:
-        return COLOR_WARNING  # High sales but low margin - needs attention
+        return COLOR_PURPLE_DARK  # High sales but low margin - needs attention
     else:  # row["Profit_Margin_Pct"] > avg_margin and row["Total_Sales"] < avg_sales
-        return COLOR_ATTENTION  # High margin but low sales - growth opportunity
+        return COLOR_POS_DARK  # High margin but low sales - growth opportunity
 
 def _add_color_labels_for_scatter_segmentations(fig):
     # Add color legend box in top right corner
     legend_x_start = 0.05
-    legend_y_start = 1.02
+    legend_y_start = 1.05
     box_height = 0.03
     box_width = 0.04
     spacing = 0.01
 
     legend_items = [
-        (COLOR_GREEN, "Margen Alto y Ventas Altas"),
-        (COLOR_ATTENTION, "Margen Alto y Ventas Bajas"),
-        (COLOR_WARNING, "Margen Bajo y Ventas Altas"),
+        (COLOR_GREEN_DARK, "Margen Alto y Ventas Altas"),
+        (COLOR_POS_DARK, "Margen Alto y Ventas Bajas"),
+        (COLOR_PURPLE_DARK, "Margen Bajo y Ventas Altas"),
         (COLOR_RED, "Margen Bajo y Ventas Bajas")
     ]
 
@@ -600,7 +610,7 @@ def plot_lollipop(agg_margin_by_cat, selected_categories=None):
                 ),
                 text=[f"{val:.0f}%" for val in cat_data["Avg_Profit_Margin_Pct"]],
                 textposition="middle center",
-                textfont=dict(color="white", size=8, family="Arial Black"),
+                textfont=dict(size=10, family="Arial Black"),
                 name=category,
                 legendgroup=category,
                 customdata=discount_bin_labels,
@@ -711,7 +721,14 @@ def plot_price_volume_profit_bubble(agg_price_volume):
     avg_margin = agg_price_volume['Profit_Margin_Pct'].mean()
     avg_price = agg_price_volume['Avg_Price'].mean()
     agg_price_volume = agg_price_volume.copy()
-    agg_price_volume["Color"] = agg_price_volume.apply(func=lambda row: _return_color_for_cell_based_on_values(row['Profit_Margin_Pct'], row['Avg_Price'], avg_margin, avg_price),axis=1)
+    # Vectorized color assignment
+    conditions = [
+        (agg_price_volume['Profit_Margin_Pct'] > avg_margin) & (agg_price_volume['Avg_Price'] > avg_price),
+        (agg_price_volume['Profit_Margin_Pct'] < avg_margin) & (agg_price_volume['Avg_Price'] < avg_price),
+        (agg_price_volume['Profit_Margin_Pct'] < avg_margin) & (agg_price_volume['Avg_Price'] > avg_price),
+    ]
+    choices = [COLOR_ATTENTION, COLOR_RED, COLOR_PURPLE_DARK]
+    agg_price_volume["Color"] = np.select(conditions, choices, default=COLOR_POS_DARK)
 
     fig = go.Figure()
 
@@ -776,7 +793,7 @@ def plot_price_volume_profit_bubble(agg_price_volume):
         ))
 
 
-
+    _add_color_labels_for_scatter_segmentations(fig)
     max_cat_by_average_sale = agg_price_volume.loc[agg_price_volume['Avg_Price'].idxmax(), 'Category']
     max_cat_by_average_sale_second_place = agg_price_volume.loc[agg_price_volume['Avg_Price'].nlargest(2).index[-1], 'Category']
     max_cat_by_average_sale_value = agg_price_volume.loc[agg_price_volume['Avg_Price'].idxmax(), 'Avg_Price']
@@ -930,9 +947,14 @@ def plot_scatter_category(agg_data, min_sales=None, margin_range=None):
     avg_sales = data["Total_Sales"].mean()
     avg_margin = data["Profit_Margin_Pct"].mean()
 
-
-
-    data["Color"] = data.apply(func= lambda row: _assign_color(row, avg_margin, avg_sales), axis=1)
+    # Vectorized color assignment
+    conditions = [
+        (data["Profit_Margin_Pct"] > avg_margin) & (data["Total_Sales"] > avg_sales),
+        (data["Profit_Margin_Pct"] < avg_margin) & (data["Total_Sales"] < avg_sales),
+        (data["Profit_Margin_Pct"] < avg_margin) & (data["Total_Sales"] > avg_sales),
+    ]
+    choices = [COLOR_ATTENTION, COLOR_RED, COLOR_PURPLE_DARK]
+    data["Color"] = np.select(conditions, choices, default=COLOR_POS_DARK)
 
     fig = go.Figure()
     fig.add_hline(
@@ -1056,7 +1078,7 @@ def plot_scatter_subcategory(agg_data, cat_filter=None, min_sales=None, margin_r
     - Si es None, se grafican todas las subcategorías
     - Si es una lista de strings, se grafican solo las subcategorías que están en la lista"""
     agg_data_filtered = agg_data.copy()
-    print(agg_data.columns)
+    
     if cat_filter:
         agg_data_filtered = agg_data[agg_data["Category"].isin(cat_filter)]
 
@@ -1078,9 +1100,14 @@ def plot_scatter_subcategory(agg_data, cat_filter=None, min_sales=None, margin_r
     avg_sales = agg_data_filtered["Total_Sales"].mean()
     avg_margin = agg_data_filtered["Profit_Margin_Pct"].mean()
 
-
-
-    agg_data_filtered["Color"] = agg_data_filtered.apply(func = lambda row: _assign_color(row,avg_margin, avg_sales), axis=1)
+    # Vectorized color assignment
+    conditions = [
+        (agg_data_filtered["Profit_Margin_Pct"] > avg_margin) & (agg_data_filtered["Total_Sales"] > avg_sales),
+        (agg_data_filtered["Profit_Margin_Pct"] < avg_margin) & (agg_data_filtered["Total_Sales"] < avg_sales),
+        (agg_data_filtered["Profit_Margin_Pct"] < avg_margin) & (agg_data_filtered["Total_Sales"] > avg_sales),
+    ]
+    choices = [COLOR_ATTENTION, COLOR_RED, COLOR_PURPLE_DARK]
+    agg_data_filtered["Color"] = np.select(conditions, choices, default=COLOR_POS_DARK)
 
 
     fig = go.Figure()
@@ -1209,12 +1236,29 @@ def init_user_state() -> None:
         st.session_state.aggregations = {}
 
 
+@st.cache_data(ttl=3600)
 def load_data() -> pd.DataFrame:
     """Load dataset."""
-    dataset_url = "https://github.com/Volv1t3/MidtermDataAnalysisProject/raw/refs/heads/Proyecto-Fin-Semestre/src/res/processed_data/ProyectoFinSemestreADM3083_SuperstoreProcessed.csv"
-    dataset = pd.read_csv(dataset_url, sep=",")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Navigate to the data file relative to script location
+    # Adjust the path based on your actual structure
+    dataset_path = os.path.join(
+        script_dir,
+        "..", "..", "..", "res", "processed_data",
+        "ProyectoFinSemestreADM3083_SuperstoreProcessed.csv"
+    )
+
+    # Fallback to GitHub if local file doesn't exist (for flexibility)
+    if os.path.exists(dataset_path):
+        dataset = pd.read_csv(dataset_path, sep=",")
+    else:
+        # Fallback to remote URL
+        dataset_url = "https://github.com/Volv1t3/MidtermDataAnalysisProject/raw/refs/heads/Proyecto-Fin-Semestre/src/res/processed_data/ProyectoFinSemestreADM3083_SuperstoreProcessed.csv"
+        dataset = pd.read_csv(dataset_url, sep=",")
+
     for column in ["Order Date", "Ship Date"]:
         dataset[column] = pd.to_datetime(dataset[column], errors="coerce")
+
     return dataset
 
 
@@ -1357,7 +1401,7 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
       c1, c2 = st.columns(2)
       with c1:
           st.html(f"""
-          <div style="background: linear-gradient(135deg, {COLOR_ATTENTION}, #1a8ab8); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+          <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">GANANCIA POR RANGO DE DESCUENTO</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">Límite Estratégico: 30%</h2>
                 <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Umbral Crítico de Rentabilidad</p>
@@ -1372,7 +1416,7 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
           if not avg_margin.empty:
               overall_margin = avg_margin["Profit_Margin_Pct"].mean()
               st.html(f"""
-              <div style="background: linear-gradient(135deg, {COLOR_WARNING}, #f4c060); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+              <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">MARGEN DE GANANCIA PROMEDIO</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">{overall_margin:.2f}%</h2>
                     <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Benchmark de Rendimiento Global</p>
@@ -1389,7 +1433,7 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
           unique_customers = data["Customer ID"].nunique()
           total_orders = len(data)
           st.html(f"""
-          <div style="background: linear-gradient(135deg, {COLOR_GREEN}, #89ae04); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+          <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">CLIENTES ÚNICOS</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">{unique_customers:,}</h2>
                 <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Total de órdenes: <b>{total_orders:,}</b></p>
@@ -1417,7 +1461,7 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
           total_profit = data["Profit"].sum()
           profit_margin_overall = (total_profit / total_sales * 100) if total_sales > 0 else 0
           st.html(f"""
-          <div style="background: linear-gradient(135deg, {COLOR_ATTENTION}, #1a8ab8); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+          <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">GANANCIA TOTAL ACUMULADA</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">${total_profit:,.2f}</h2>
                 <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Margen Neto: <b>{profit_margin_overall:.2f}%</b></p>
@@ -1457,7 +1501,7 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
               best_cat = margin_by_cat.groupby("Category")["Avg_Profit_Margin_Pct"].mean().idxmax()
               best_margin = margin_by_cat.groupby("Category")["Avg_Profit_Margin_Pct"].mean().max()
               st.html(f"""
-              <div style="background: linear-gradient(135deg, {COLOR_GREEN}, #89ae04); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+              <div style="background: linear-gradient(135deg, {COLOR_PURPLE_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">LÍDER DE RENTABILIDAD POR CATEGORÍA</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">{best_cat}</h2>
                     <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Margen Promedio: <b>{best_margin:.2f}%</b></p>
@@ -1473,7 +1517,7 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
               top_cat = by_cat.loc[by_cat["Total_Sales"].idxmax(), "Category"]
               top_sales = by_cat["Total_Sales"].max()
               st.html(f"""
-              <div style="background: linear-gradient(135deg, {COLOR_ATTENTION}, #1a8ab8); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+              <div style="background: linear-gradient(135deg, {COLOR_PURPLE_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">LÍDER EN VOLUMEN DE VENTAS</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">{top_cat}</h2>
                     <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Ingresos Totales: <b>${top_sales:,.2f}</b></p>
@@ -1523,7 +1567,7 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
               best_subcat = margin_by_subcat.loc[margin_by_subcat["Profit_Margin_Pct"].idxmax()]["Sub_Category"]
               best_subcat_margin = margin_by_subcat.loc[margin_by_subcat["Profit_Margin_Pct"].idxmax()]["Profit_Margin_Pct"]
               st.html(f"""
-              <div style="background: linear-gradient(135deg, {COLOR_GREEN}, #89ae04); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+              <div style="background: linear-gradient(135deg, {COLOR_BROWN_DARK}, {COLOR_BROWN_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">SUBCATEGORÍA CON MEJOR DESEMPEÑO</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">{best_subcat}</h2>
                     <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Margen Promedio: <b>{best_subcat_margin:.2f}%</b></p>
@@ -1539,7 +1583,7 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
               worst_subcat_margin = margin_by_subcat.loc[margin_by_subcat["Profit_Margin_Pct"].idxmin()][
                   "Profit_Margin_Pct"]
               st.html(f"""
-              <div style="background: linear-gradient(135deg, {COLOR_RED}, #ff4d4d); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+              <div style="background: linear-gradient(135deg, {COLOR_RED_DARK}, {COLOR_RED_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">SUBCATEGORÍA CRÍTICA (BAJO MARGEN)</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">{worst_subcat}</h2>
                     <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Margen Promedio: <b>{worst_subcat_margin:.2f}%</b></p>
@@ -1600,7 +1644,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
         c1, c2, c3 = st.columns(3)
         with c1:
             st.html(f"""
-            <div style="background: linear-gradient(135deg, {COLOR_ATTENTION}, #1a8ab8); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">RENTABILIDAD MÁXIMA (SUBCATEGORÍA)</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">{best_margin['Profit_Margin_Pct']:.2f}%</h2>
                 <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;"><b>{best_margin['Sub_Category']}</b> ({best_margin['Category']})</p>
@@ -1610,7 +1654,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
 
         with c2:
             st.html(f"""
-            <div style="background: linear-gradient(135deg, {COLOR_GREY}, #c0c0c0); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="background: linear-gradient(135deg, {COLOR_GREY}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">RENTABILIDAD PROMEDIO GLOBAL</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">{avg_margin:.2f}%</h2>
                 <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Media del Portafolio</p>
@@ -1620,7 +1664,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
 
         with c3:
             st.html(f"""
-            <div style="background: linear-gradient(135deg, {COLOR_RED}, #ff4d4d); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="background: linear-gradient(135deg, {COLOR_RED_DARK}, {COLOR_RED_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">RENTABILIDAD MÍNIMA (SUBCATEGORÍA)</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">{worst_margin['Profit_Margin_Pct']:.2f}%</h2>
                 <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;"><b>{worst_margin['Sub_Category']}</b> ({worst_margin['Category']})</p>
@@ -1642,7 +1686,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
         c1, c2, c3 = st.columns(3)
         with c1:
             st.html(f"""
-            <div style="background: linear-gradient(135deg, {COLOR_ATTENTION}, #1a8ab8); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">VOLUMEN MÁXIMO DE VENTAS</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">${highest_sales['Total_Sales']:,.2f}</h2>
                 <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;"><b>{highest_sales['Sub_Category']}</b> ({highest_sales['Category']})</p>
@@ -1652,7 +1696,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
 
         with c2:
             st.html(f"""
-            <div style="background: linear-gradient(135deg, {COLOR_GREY}, #c0c0c0); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="background: linear-gradient(135deg, {COLOR_GREY}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">VENTAS PROMEDIO POR UNIDAD</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">${avg_sales:,.2f}</h2>
                 <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Media Transaccional del Portafolio</p>
@@ -1662,7 +1706,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
 
         with c3:
             st.html(f"""
-            <div style="background: linear-gradient(135deg, {COLOR_RED}, #ff4d4d); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="background: linear-gradient(135deg, {COLOR_RED_DARK}, {COLOR_RED_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">VOLUMEN MÍNIMO DE VENTAS</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">${lowest_sales['Total_Sales']:,.2f}</h2>
                 <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;"><b>{lowest_sales['Sub_Category']}</b> ({lowest_sales['Category']})</p>
@@ -1684,7 +1728,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
             cat_data = aggs["by_category"]
             best_cat = cat_data.loc[cat_data["Profit_Margin_Pct"].idxmax()]
             st.html(f"""
-            <div style="background: linear-gradient(135deg, {COLOR_ATTENTION}, #1a8ab8); padding: 20px; border-radius: 12px; color: white; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+            <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_GREY}); padding: 20px; border-radius: 12px; color: white; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
                 <p style="margin: 0; font-size: 0.95em; line-height: 1.5;">
                     <b>{best_cat['Category']}</b> con un margen de <b>{best_cat['Profit_Margin_Pct']:.2f}%</b> y facturación de <b>${best_cat['Total_Sales']:,.2f}</b> es la categoría líder en rentabilidad dentro del dataset.
                 </p>
@@ -1700,7 +1744,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
             st.html(f"""
             <div style="background: linear-gradient(135deg, {_return_color_for_cell_based_on_values(worst_cat['Profit_Margin_Pct'],worst_cat['Total_Sales'],average_margin_by_cat, average_sales_by_cat)},{_return_color_for_cell_based_on_values(worst_cat['Profit_Margin_Pct'],worst_cat['Total_Sales'],average_margin_by_cat, average_sales_by_cat)}); padding: 20px; border-radius: 12px; color: white; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
                 <p style="margin: 0; font-size: 0.95em; line-height: 1.5;">
-                    <b>{worst_cat['Category']}</b> con un margen de <b>{worst_cat['Profit_Margin_Pct']:.2f}%</b> y facturación de <b>${worst_cat['Total_Sales']:,.2f}</b>es la categoría sugerida para su revisión y seguimiento.
+                    <b>{worst_cat['Category']}</b> con un margen de <b>{worst_cat['Profit_Margin_Pct']:.2f}%</b> y facturación de <b>${worst_cat['Total_Sales']:,.2f}</b> es la categoría sugerida para su revisión y seguimiento.
                 </p>
             </div>
             """)
@@ -1762,7 +1806,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
             cat_data = aggs["by_subcategory"]
             best_cat = cat_data.loc[cat_data["Profit_Margin_Pct"].idxmax()]
             st.html(f"""
-                <div style="background: linear-gradient(135deg, {COLOR_ATTENTION}, #1a8ab8); padding: 20px; border-radius: 12px; color: white; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_GREY}); padding: 20px; border-radius: 12px; color: white; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
                     <p style="margin: 0; font-size: 0.95em; line-height: 1.5;">
                         <b>{best_cat['Sub_Category']}</b> con margen del <b>{best_cat['Profit_Margin_Pct']:.2f}%</b> y facturación de <b>${best_cat['Total_Sales']:,.2f}</b> hija de la categoría <b>{best_cat['Category']}</b> es la subcategoría más rentable dentro del periodo de análisis.
                     </p>
@@ -1866,7 +1910,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
             highest_price_cat = agg_pv.loc[agg_pv["Avg_Price"].idxmax(), "Category"]
             highest_price = agg_pv["Avg_Price"].max()
             st.html(f"""
-            <div style="background: linear-gradient(135deg, {COLOR_ATTENTION}, #1a8ab8); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                   <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">LIDERAZGO EN PRECIOS PREMIUM</h4>
                   <h2 style="margin: 15px 0; font-size: 2.2em;">{highest_price_cat}</h2>
                   <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Ticket Promedio: <b>${highest_price:,.2f}</b></p>
@@ -1884,7 +1928,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
             unique_customers = agg_cv["Unique_Customers"].sum()
             avg_customer_value = total_sales / unique_customers
             st.html(f"""
-            <div style="background: linear-gradient(135deg, {COLOR_GREEN}, #89ae04); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="background: linear-gradient(135deg, {COLOR_PURPLE_DARK}, {COLOR_PURPLE_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                   <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">CUSTOMER LIFETIME VALUE</h4>
                   <h2 style="margin: 15px 0; font-size: 2.2em;">${avg_customer_value:,.2f}</h2>
                   <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Base de Clientes: <b>{unique_customers:,}</b></p>
@@ -1900,7 +1944,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
             best_margin_cat = agg_pv.loc[agg_pv["Profit_Margin_Pct"].idxmax(), "Category"]
             best_margin = agg_pv["Profit_Margin_Pct"].max()
             st.html(f"""
-            <div style="background: linear-gradient(135deg, {COLOR_WARNING}, #f4c060); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                   <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">EFICIENCIA OPERATIVA DE PRECIOS</h4>
                   <h2 style="margin: 15px 0; font-size: 2.2em;">{best_margin_cat}</h2>
                   <p style="margin: 5px 0; font-size: 1.1em; opacity: 0.9;">Margen Operativo: <b>{best_margin:.2f}%</b></p>
@@ -1922,7 +1966,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
             top_revenue_cat = agg_pv.loc[agg_pv["Total_Revenue"].idxmax(), "Category"]
             top_revenue = agg_pv["Total_Revenue"].max()
             st.html(f"""
-            <div style="background: linear-gradient(90deg, {COLOR_GREEN_DARK}, {COLOR_GREEN_LIGHT}); padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+            <div style="background: linear-gradient(90deg, {COLOR_BROWN_DARK}, {COLOR_BROWN_LIGHT}); padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
                   <h4 style="margin: 0; color: {WHITE}; font-weight: 400; letter-spacing: 0.5px;">GENERACIÓN DE INGRESOS BRUTOS</h4>
                   <h2 style="margin: 10px 0; color: {WHITE}; font-size: 2em;">${top_revenue:,.2f}</h2>
                   <p style="margin: 5px 0; color: {WHITE};">Líder: <b>{top_revenue_cat}</b></p>
@@ -1935,7 +1979,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
         total_transactions = len(data)
         avg_transaction_value = data['Sales'].mean()
         st.html(f"""
-        <div style="background: linear-gradient(90deg, {COLOR_LINE}, {COLOR_GREY}); padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+        <div style="background: linear-gradient(90deg, {COLOR_BROWN_DARK}, {COLOR_BROWN_LIGHT}); padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
               <h4 style="margin: 0; color: {WHITE}; font-weight: 400; letter-spacing: 0.5px;">VELOCIDAD Y TRACCIÓN COMERCIAL</h4>
               <h2 style="margin: 10px 0; color: {WHITE}; font-size: 2em;">{total_transactions:,} Órdenes</h2>
               <p style="margin: 5px 0; color: {WHITE};">Ticket Medio: <b>${avg_transaction_value:,.2f}</b></p>
@@ -1998,7 +2042,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
             best_cat = agg_cv.loc[agg_cv["Avg_Customer_Value"].idxmax(), "Category"]
             best_value = agg_cv["Avg_Customer_Value"].max()
             st.html(f"""
-            <div style="background-color: {COLOR_ATTENTION}; padding: 25px; border-radius: 15px; color: white;">
+            <div style="background-color: {COLOR_POS_DARK}; padding: 25px; border-radius: 15px; color: white;">
                   <h4 style="margin: 0; font-weight: 300;">LÍDER DE SEGMENTO DE ALTO VALOR</h4>
                   <h2 style="margin: 10px 0; font-size: 2em;">{best_cat}</h2>
                   <p style="margin: 5px 0;">Lealtad de Gasto: <b>${best_value:,.2f}</b></p>
