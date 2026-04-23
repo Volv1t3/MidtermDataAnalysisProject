@@ -38,14 +38,14 @@ COLOR_PURPLE_LIGHT = "#C1B3F2"
 COLOR_RED_DARK = "#D9043D"
 COLOR_RED_LIGHT = "#F291A3"
 
-#? Recently Modified -> https://color.adobe.com/search?q=business
+# ? Recently Modified -> https://color.adobe.com/search?q=business
 CATEGORY_COLORS = {
-    "Furniture": COLOR_BROWN_DARK,      # Blue
-    "Office Supplies": "#025940", # Green!
-    "Technology": "#3A5898",      # Green
+    "Furniture": COLOR_BROWN_DARK,  # Blue
+    "Office Supplies": "#025940",  # Green!
+    "Technology": "#3A5898",  # Green
 }
 
-DISCOUNT_BINS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,1.0]
+DISCOUNT_BINS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 DISCOUNT_LABELS = [
     "0-0.1",
     "0.1-0.2",
@@ -88,7 +88,7 @@ def generate_color_gradient(n: int):
 def _apply_standard_theme(fig, title, subtitle):
     """Unified styling for all dashboard graphs."""
     full_title = f"<b>{title}</b><br><i><span style='font-size:12px;font-weight:200;color:#666'>{subtitle}</span></i>"
-    
+
     fig.update_layout(
         title={
             "text": full_title,
@@ -113,7 +113,7 @@ def _apply_standard_theme(fig, title, subtitle):
 
 
 def _apply_x_axis_customization(figure, x_label=None, x_ticks=None, x_tick_labels=None, tick_angle=30,
-                                x_axis_style=None,  x_axis_label_distance: int=-0.12,row_id=None, column_id=None):
+                                x_axis_style=None, x_axis_label_distance: int = -0.12, row_id=None, column_id=None):
     """Apply x-axis customization to figure or subplot.
 
     Args:
@@ -162,7 +162,7 @@ def _apply_x_axis_customization(figure, x_label=None, x_ticks=None, x_tick_label
             "text": x_label,
             "showarrow": False,
             "xanchor": "left",
-            "yanchor":'bottom',
+            "yanchor": 'bottom',
             "font": dict(size=12, color=COLOR_LINE, family="Arial Black")
         }
 
@@ -182,11 +182,11 @@ def _apply_y_axis_customization(figure,
                                 y_tick_labels=None,
                                 y_axis_style=None,
                                 y_tick_style=None,
-                                y_axis_lable_distance:float=-0.12,
+                                y_axis_lable_distance: float = -0.12,
                                 row_id=None,
                                 column_id=None):
     """Apply y-axis customization to figure or subplot.
-    
+
     Args:
         figure: Plotly figure object
         y_label: Label text for y-axis
@@ -207,21 +207,21 @@ def _apply_y_axis_customization(figure,
         "tickwidth": 2,
         "tickcolor": COLOR_LINE,
     }
-    
+
     # Use provided style or default
     style = y_axis_style if y_axis_style else default_style
-    
+
     # Add tick values and labels if provided
     if y_ticks is not None:
         style["tickvals"] = y_ticks
         style["ticktext"] = y_tick_labels if y_tick_labels else [str(t) for t in y_ticks]
-    
+
     # Apply to specific subplot or entire figure
     if row_id is not None and column_id is not None:
         figure.update_yaxes(style, row=row_id, col=column_id)
     else:
         figure.update_yaxes(style)
-    
+
     # Add y-axis label annotation if provided
     if y_label:
         annotation_config = {
@@ -235,33 +235,33 @@ def _apply_y_axis_customization(figure,
             "yanchor": "bottom",
             "font": dict(size=12, color=COLOR_LINE, family="Arial Black")
         }
-        
+
         # For subplots, adjust references
         if row_id is not None and column_id is not None:
             annotation_config["xref"] = f"x{column_id} domain" if column_id > 1 else "x domain"
             annotation_config["yref"] = f"y{row_id} domain" if row_id > 1 else "y domain"
-        
+
         figure.add_annotation(**annotation_config)
 
     if y_tick_style:
-        figure.update_layout(yaxis=y_tick_style,overwrite=False)
-
+        figure.update_layout(yaxis=y_tick_style, overwrite=False)
 
     return figure
+
 
 # =============================================================================
 # Filtering
 # =============================================================================
 
 def apply_filters(
-    df: pd.DataFrame,
-    date_range,
-    time_field: str,
-    region_sel,
-    ship_sel,
-    country_sel,
-    state_sel,
-    city_sel,
+        df: pd.DataFrame,
+        date_range,
+        time_field: str,
+        region_sel,
+        ship_sel,
+        country_sel,
+        state_sel,
+        city_sel,
 ) -> pd.DataFrame:
     """Apply global sidebar filters to dataframe."""
     if df is None or df.empty:
@@ -311,6 +311,7 @@ def _assign_color(row, avg_margin, avg_sales):
     else:  # row["Profit_Margin_Pct"] > avg_margin and row["Total_Sales"] < avg_sales
         return COLOR_POS_LIGHT  # High margin but low sales - growth opportunity
 
+
 def _add_color_labels_for_scatter_segmentations(fig):
     # Add color legend box in top right corner
     legend_x_start = 0.05
@@ -359,6 +360,8 @@ def _add_color_labels_for_scatter_segmentations(fig):
         current_x += box_width + text_width + spacing
 
     return fig
+
+
 # =============================================================================
 # Aggregations
 # =============================================================================
@@ -531,8 +534,8 @@ def plot_waterfall(agg_profit, agg_margin):
         width=1200
     )
 
-    #? Para definir la label definitiva, y responsive extraemos el ultimo valor positivo antes de caer en la rentabilidad
-    #? y extraemos su idxmax() para sacar la bin a la que pertenece
+    # ? Para definir la label definitiva, y responsive extraemos el ultimo valor positivo antes de caer en la rentabilidad
+    # ? y extraemos su idxmax() para sacar la bin a la que pertenece
     positive_profit = agg_profit[agg_profit["Avg_Profit"] > 0]
     if not positive_profit.empty:
         max_discount_label = positive_profit["Discount_Bin"].iloc[-1]
@@ -543,7 +546,7 @@ def plot_waterfall(agg_profit, agg_margin):
     _apply_standard_theme(
         fig,
         "Comparativa de Ganancia y Margen de Ganancia Promedio por cada Intervalo de Descuentos Aplicado",
-f"Durante el periodo de análisis, las ventas generan ganancias y rentabilidad para la empresa {discount_text}")
+        f"Durante el periodo de análisis, las ventas generan ganancias y rentabilidad para la empresa {discount_text}")
 
     _apply_x_axis_customization(fig, x_label="Rango de Descuentos", row_id=1, column_id=1, x_axis_label_distance=-0.2)
     _apply_y_axis_customization(fig, y_label="Ganancia Promedio ($)", row_id=1, column_id=1, y_axis_style={
@@ -559,7 +562,6 @@ f"Durante el periodo de análisis, las ventas generan ganancias y rentabilidad p
         'tickformat': '.0f',
         'tickprefix': '$'
     })
-    
 
     _apply_x_axis_customization(fig, x_label="Rango de Descuentos", row_id=1, column_id=2, x_axis_label_distance=-0.2)
     _apply_y_axis_customization(fig, y_label="Margen de Ganancia (%)", row_id=1, column_id=2, y_axis_style={
@@ -577,7 +579,6 @@ f"Durante el periodo de análisis, las ventas generan ganancias y rentabilidad p
     })
 
     return fig
-
 
 
 # =============================================================================
@@ -659,7 +660,8 @@ def plot_lollipop(agg_margin_by_cat, selected_categories=None):
         ),
     )
 
-    _apply_x_axis_customization(fig, x_label="Rango de Descuentos",x_tick_labels=DISCOUNT_LABELS, x_ticks=list(range(len(DISCOUNT_LABELS))), tick_angle=0)
+    _apply_x_axis_customization(fig, x_label="Rango de Descuentos", x_tick_labels=DISCOUNT_LABELS,
+                                x_ticks=list(range(len(DISCOUNT_LABELS))), tick_angle=0)
     _apply_y_axis_customization(fig, y_label="Margen de Ganancia Promedio (%)", y_axis_style={
         'showgrid': False,
         'showline': True,
@@ -697,7 +699,6 @@ def plot_heatmap(agg_margin_by_subcat, selected_subcats=None, top_n=None):
     # Ensure columns are in correct order from DISCOUNT_LABELS
     pivot_df = pivot_df.reindex(columns=DISCOUNT_LABELS)
 
-
     text_array = []
     for i, row in enumerate(pivot_df.values):
         text_row = []
@@ -728,8 +729,9 @@ def plot_heatmap(agg_margin_by_subcat, selected_subcats=None, top_n=None):
         "Tabulación del Margen de Ganancia por Subcategoría segmentado por Rango de Descuento",
         "Las 17 subcategorías de la compañia muestran una tendencia similar donde un descuento superior al 30% invierte<br> las ganancias porcentuales y resigna a pérdidas para cada venta realizada",
     )
-    
-    _apply_x_axis_customization(fig, x_label="Rango de Descuentos", x_tick_labels=DISCOUNT_LABELS, x_ticks=list(range(len(DISCOUNT_LABELS))), tick_angle=0)
+
+    _apply_x_axis_customization(fig, x_label="Rango de Descuentos", x_tick_labels=DISCOUNT_LABELS,
+                                x_ticks=list(range(len(DISCOUNT_LABELS))), tick_angle=0)
     _apply_y_axis_customization(fig, y_label="Sub-Categorías", y_axis_lable_distance=-0.1)
     return fig
 
@@ -762,15 +764,15 @@ def plot_price_volume_profit_bubble(agg_price_volume):
                   line_width=1,
                   opacity=0.5,
                   annotation_text=f"Precio Promedio: ${avg_price:,.0f}",
-                   annotation_position="top",
-                   annotation=dict(
-                       font=dict(size=10, family="Arial", style='italic'),
-                       bordercolor=COLOR_BG,
-                       borderwidth=1,
-                       borderpad=4,
-                       y=0.95
-                   )
-    )
+                  annotation_position="top",
+                  annotation=dict(
+                      font=dict(size=10, family="Arial", style='italic'),
+                      bordercolor=COLOR_BG,
+                      borderwidth=1,
+                      borderpad=4,
+                      y=0.95
+                  )
+                  )
     avg_margin = agg_price_volume['Profit_Margin_Pct'].mean()
     fig.add_hline(
         y=avg_margin,
@@ -780,7 +782,7 @@ def plot_price_volume_profit_bubble(agg_price_volume):
         opacity=0.5,
         annotation_text=f"Margen Promedio: {avg_margin:.1f}%",
         annotation_position="left",
-        annotation= dict(
+        annotation=dict(
             font=dict(size=10, family="Arial", style='italic'),
             bordercolor=COLOR_BG,
             borderwidth=1,
@@ -814,10 +816,10 @@ def plot_price_volume_profit_bubble(agg_price_volume):
             )
         ))
 
-
     _add_color_labels_for_scatter_segmentations(fig)
     max_cat_by_average_sale = agg_price_volume.loc[agg_price_volume['Avg_Price'].idxmax(), 'Category']
-    max_cat_by_average_sale_second_place = agg_price_volume.loc[agg_price_volume['Avg_Price'].nlargest(2).index[-1], 'Category']
+    max_cat_by_average_sale_second_place = agg_price_volume.loc[
+        agg_price_volume['Avg_Price'].nlargest(2).index[-1], 'Category']
     max_cat_by_average_sale_value = agg_price_volume.loc[agg_price_volume['Avg_Price'].idxmax(), 'Avg_Price']
     max_cat_by_margin = agg_price_volume.loc[agg_price_volume['Profit_Margin_Pct'].idxmax(), 'Category']
     max_cat_by_margin_value = agg_price_volume.loc[agg_price_volume['Profit_Margin_Pct'].idxmax(), 'Profit_Margin_Pct']
@@ -829,7 +831,7 @@ def plot_price_volume_profit_bubble(agg_price_volume):
         f"<br>En términos de Margen de Ganancia <b>{max_cat_by_margin}</b> con <b>{max_cat_by_margin_value:.2f}%</b> es "
         f"la categoría más altas, reflejando que <b>{max_cat_by_margin}</b> es una categoría fuerte en ventas y en ingresos por venta."
     )
-    
+
     _apply_x_axis_customization(fig, x_label="Precio Promedio ($)", x_axis_style={
         'showgrid': False,
         'gridcolor': 'lightgray',
@@ -843,7 +845,7 @@ def plot_price_volume_profit_bubble(agg_price_volume):
         'tickformat': ',.0f',
         'tickprefix': '$'
     }, x_axis_label_distance=-0.1)
-    
+
     _apply_y_axis_customization(fig, y_label="Margen de Utilidad (%)", y_axis_style={
         'showgrid': False,
         'gridcolor': 'lightgray',
@@ -858,21 +860,21 @@ def plot_price_volume_profit_bubble(agg_price_volume):
         'tickformat': '.0f',
         'ticksuffix': '%'
     }, y_axis_lable_distance=-0.07)
-    
+
     fig.update_layout(
         hovermode='closest',
     )
-    
+
     return fig
 
 
 def plot_avg_customer_purchase_by_discount(agg_customer_purchase):
     """Line chart: Average Customer Purchase Value by Category across Discount Bins."""
     fig = go.Figure()
-    
+
     for category in sorted(agg_customer_purchase['Category'].unique()):
         cat_data = agg_customer_purchase[agg_customer_purchase['Category'] == category]
-        
+
         fig.add_trace(go.Scatter(
             x=cat_data['Discount_Bin'].astype(str),
             y=cat_data['Avg_Purchase_Per_Customer'],
@@ -895,14 +897,14 @@ def plot_avg_customer_purchase_by_discount(agg_customer_purchase):
                 "<extra></extra>"
             )
         ))
-    
+
     _apply_standard_theme(
         fig,
         "Valor Promedio de Compra por Cliente según Categoría y Rango de Descuento",
         "Durante el periodo 2014-2017, <b>Technology, Furniture y Office Supplies</b> muestran un <b>Valor de Compra Promedio</b> similar, demostrando una tendencia que coincide con el comportamiento general de las ganancias porcentuales por categoría<br>"
         "donde la ganancia se mantiene positiva antes de los descuentos mayores al 20%, demostrando rentabilidad y valor comercial para las categorías en base a descuentos menores."
     )
-    
+
     _apply_x_axis_customization(fig, x_label="Rango de Descuentos", tick_angle=30, x_axis_label_distance=-0.15)
     _apply_y_axis_customization(fig, y_label="Compra Promedio por Cliente ($)", y_axis_style={
         'showgrid': False,
@@ -917,7 +919,7 @@ def plot_avg_customer_purchase_by_discount(agg_customer_purchase):
         'tickformat': ',.0f',
         'tickprefix': '$'
     }, y_axis_lable_distance=-0.07)
-    
+
     fig.update_layout(
         hovermode='x unified',
         legend=dict(
@@ -961,7 +963,7 @@ def plot_scatter_category(agg_data, min_sales=None, margin_range=None):
         data = data[
             (data["Profit_Margin_Pct"] >= margin_range[0])
             & (data["Profit_Margin_Pct"] <= margin_range[1])
-        ]
+            ]
 
     if data.empty:
         return None
@@ -989,7 +991,7 @@ def plot_scatter_category(agg_data, min_sales=None, margin_range=None):
         annotation_position="left",
         annotation_align='left',
         annotation=dict(
-            font=dict(size=10, family="Arial",style='italic'),
+            font=dict(size=10, family="Arial", style='italic'),
             bordercolor=COLOR_BG,
             borderwidth=1,
             borderpad=4,
@@ -1080,12 +1082,12 @@ def plot_scatter_category(agg_data, min_sales=None, margin_range=None):
         height=1000,
         showlegend=True,
         xaxis={
-            'zeroline':False,
-            'tickformat':',.0f',
-            'tickprefix':'$'
+            'zeroline': False,
+            'tickformat': ',.0f',
+            'tickprefix': '$'
         },
         yaxis={
-            'zeroline':False,
+            'zeroline': False,
             'tickformat': '.0f',
             'ticksuffix': '%'
 
@@ -1100,7 +1102,7 @@ def plot_scatter_subcategory(agg_data, cat_filter=None, min_sales=None, margin_r
     - Si es None, se grafican todas las subcategorías
     - Si es una lista de strings, se grafican solo las subcategorías que están en la lista"""
     agg_data_filtered = agg_data.copy()
-    
+
     if cat_filter:
         agg_data_filtered = agg_data[agg_data["Category"].isin(cat_filter)]
 
@@ -1112,7 +1114,7 @@ def plot_scatter_subcategory(agg_data, cat_filter=None, min_sales=None, margin_r
         agg_data_filtered = agg_data_filtered[
             (agg_data_filtered["Profit_Margin_Pct"] >= margin_range[0])
             & (agg_data_filtered["Profit_Margin_Pct"] <= margin_range[1])
-        ]
+            ]
     if top_n:
         agg_data_filtered = agg_data_filtered.nlargest(top_n, "Total_Sales")
 
@@ -1130,7 +1132,6 @@ def plot_scatter_subcategory(agg_data, cat_filter=None, min_sales=None, margin_r
     ]
     choices = [COLOR_ATTENTION, COLOR_RED, COLOR_PURPLE_DARK]
     agg_data_filtered["Color"] = np.select(conditions, choices, default=COLOR_POS_LIGHT)
-
 
     fig = go.Figure()
     fig.add_hline(
@@ -1233,7 +1234,7 @@ def plot_scatter_subcategory(agg_data, cat_filter=None, min_sales=None, margin_r
         height=1000,
         hovermode="closest",
         showlegend=True,
-        xaxis={'zeroline': False, 'tickformat':',.0f','tickprefix':'$'},
+        xaxis={'zeroline': False, 'tickformat': ',.0f', 'tickprefix': '$'},
         yaxis={
             'zeroline': False,
             'tickformat': '.0f',
@@ -1295,7 +1296,8 @@ def initialize_dashboard():
 def render_sidebar(data: pd.DataFrame | None):
     """Render sidebar controls."""
     st.sidebar.title("Controles de Filtros Generales")
-    st.sidebar.markdown("Filtros generales para toda la dashboardoard. Estos filtros afectan a todas las visualizaciones y permiten segmentar los datos por tiempo, región, mecanismo de envío, y ubicación geográfica del cliente.")
+    st.sidebar.markdown(
+        "Filtros generales para toda la dashboardoard. Estos filtros afectan a todas las visualizaciones y permiten segmentar los datos por tiempo, región, mecanismo de envío, y ubicación geográfica del cliente.")
 
     # --- Global Filters ---
     st.sidebar.subheader("Filtros Temporales")
@@ -1360,7 +1362,7 @@ def render_sidebar(data: pd.DataFrame | None):
             if country_sel:
                 state_opts = sorted(
                     data.loc[data["Country"].isin(country_sel), "State"
-                ].dropna().unique().tolist()
+                    ].dropna().unique().tolist()
                 )
             else:
                 state_opts = sorted(data["State"].dropna().unique().tolist())
@@ -1371,12 +1373,12 @@ def render_sidebar(data: pd.DataFrame | None):
             if state_sel:
                 city_opts = sorted(
                     data.loc[data["State"].isin(state_sel), "City"
-                ].dropna().unique().tolist()
+                    ].dropna().unique().tolist()
                 )
             elif country_sel:
                 city_opts = sorted(
                     data.loc[data["Country"].isin(country_sel), "City"
-                ].dropna().unique().tolist()
+                    ].dropna().unique().tolist()
                 )
             else:
                 city_opts = sorted(data["City"].dropna().unique().tolist())
@@ -1408,21 +1410,21 @@ def render_sidebar(data: pd.DataFrame | None):
 
 
 def render_tab_overview(data: pd.DataFrame, aggs: dict):
-      """Tab 1: Overview with Waterfall, Lollipop, Line charts."""
-      st.html(
+    """Tab 1: Overview with Waterfall, Lollipop, Line charts."""
+    st.html(
         """
         <h2> Exploración de la Rentabilidad por Descuentos Aplicados </h2>
         <small><i>Este dashboard permite explorar la relación entre la rentabilidad y el porcentaje de descuento categoría y subcategoría 
         del minorista Superstore Giant. Se pueden aplicar filtros para analizar diferentes segmentos del negocio, mecanismos de envío, y datos geográficos
         de los clientes.</i></small>
         """
-      )
+    )
 
-      # --- KPI Cards (2 rows layout) ---
-      # First row: 2 KPI cards
-      c1, c2 = st.columns(2)
-      with c1:
-          st.html(f"""
+    # --- KPI Cards (2 rows layout) ---
+    # First row: 2 KPI cards
+    c1, c2 = st.columns(2)
+    with c1:
+        st.html(f"""
           <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">GANANCIA POR RANGO DE DESCUENTO</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">Límite Estratégico: 30%</h2>
@@ -1432,12 +1434,12 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                 </p>
             </div>
           """)
-      with c2:
-          # Calculate profit margin stats
-          avg_margin = aggs.get("by_subcategory", pd.DataFrame())
-          if not avg_margin.empty:
-              overall_margin = avg_margin["Profit_Margin_Pct"].mean()
-              st.html(f"""
+    with c2:
+        # Calculate profit margin stats
+        avg_margin = aggs.get("by_subcategory", pd.DataFrame())
+        if not avg_margin.empty:
+            overall_margin = avg_margin["Profit_Margin_Pct"].mean()
+            st.html(f"""
               <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">MARGEN DE GANANCIA PROMEDIO</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">{overall_margin:.2f}%</h2>
@@ -1447,8 +1449,8 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                     </p>
                 </div>
               """)
-          else:
-              st.html(f"""
+        else:
+            st.html(f"""
               <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">MARGEN DE GANANCIA PROMEDIO</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">--%</h2>
@@ -1458,14 +1460,14 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                     </p>
                 </div>
               """)
-      
-      # Second row: 3 KPI cards
-      c3, c4, c5 = st.columns(3)
-      with c3:
-          # Calculate unique customers
-          unique_customers = data["Customer ID"].nunique()
-          total_orders = len(data)
-          st.html(f"""
+
+    # Second row: 3 KPI cards
+    c3, c4, c5 = st.columns(3)
+    with c3:
+        # Calculate unique customers
+        unique_customers = data["Customer ID"].nunique()
+        total_orders = len(data)
+        st.html(f"""
           <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">CLIENTES ÚNICOS</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">{unique_customers:,}</h2>
@@ -1475,11 +1477,11 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                 </p>
             </div>
           """)
-      with c4:
-          # Calculate average order value
-          avg_order_value = data["Sales"].mean()
-          total_sales = data["Sales"].sum()
-          st.html(f"""
+    with c4:
+        # Calculate average order value
+        avg_order_value = data["Sales"].mean()
+        total_sales = data["Sales"].sum()
+        st.html(f"""
           <div style="background: linear-gradient(135deg, {COLOR_GREY}, #c0c0c0); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">VALOR PROMEDIO POR ORDEN</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">${avg_order_value:,.2f}</h2>
@@ -1489,11 +1491,11 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                 </p>
             </div>
           """)
-      with c5:
-          # Calculate total profit
-          total_profit = data["Profit"].sum()
-          profit_margin_overall = (total_profit / total_sales * 100) if total_sales > 0 else 0
-          st.html(f"""
+    with c5:
+        # Calculate total profit
+        total_profit = data["Profit"].sum()
+        profit_margin_overall = (total_profit / total_sales * 100) if total_sales > 0 else 0
+        st.html(f"""
           <div style="background: linear-gradient(135deg, {COLOR_POS_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">GANANCIA TOTAL ACUMULADA</h4>
                 <h2 style="margin: 15px 0; font-size: 2.2em;">${total_profit:,.2f}</h2>
@@ -1504,36 +1506,36 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
             </div>
           """)
 
-      # --- Waterfall ---
-      st.markdown("---")
-      st.html("""
+    # --- Waterfall ---
+    st.markdown("---")
+    st.html("""
       <h3>Exploración de la tendencia general de la Ganancia Promedio y el Margen de Ganancia Porcentual por Rango de Descuento</h3>
       """)
-      if not aggs.get("profit_by_discount", pd.DataFrame()).empty:
-          st.plotly_chart(
-              plot_waterfall(
-                  aggs["profit_by_discount"], aggs["margin_by_discount"]
-              ),
-              use_container_width=True,
-              config={
-                  "displaylogo": False,
-                  "displayModeBar": False}
-          )
+    if not aggs.get("profit_by_discount", pd.DataFrame()).empty:
+        st.plotly_chart(
+            plot_waterfall(
+                aggs["profit_by_discount"], aggs["margin_by_discount"]
+            ),
+            use_container_width=True,
+            config={
+                "displaylogo": False,
+                "displayModeBar": False}
+        )
 
-      # --- Lollipop ---
-      st.markdown("---")
-      st.html("""
+    # --- Lollipop ---
+    st.markdown("---")
+    st.html("""
       <h3>Desglose del Margen de Ganancia Promedio por Categoría</h3>
       """)
-      # KPI Cards (2-Column)
-      c1, c2 = st.columns(2)
-      with c1:
-          # Highest margin category
-          margin_by_cat = aggs.get("margin_by_category", pd.DataFrame())
-          if not margin_by_cat.empty:
-              best_cat = margin_by_cat.groupby("Category")["Avg_Profit_Margin_Pct"].mean().idxmax()
-              best_margin = margin_by_cat.groupby("Category")["Avg_Profit_Margin_Pct"].mean().max()
-              st.html(f"""
+    # KPI Cards (2-Column)
+    c1, c2 = st.columns(2)
+    with c1:
+        # Highest margin category
+        margin_by_cat = aggs.get("margin_by_category", pd.DataFrame())
+        if not margin_by_cat.empty:
+            best_cat = margin_by_cat.groupby("Category")["Avg_Profit_Margin_Pct"].mean().idxmax()
+            best_margin = margin_by_cat.groupby("Category")["Avg_Profit_Margin_Pct"].mean().max()
+            st.html(f"""
               <div style="background: linear-gradient(135deg, {COLOR_PURPLE_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">LÍDER DE RENTABILIDAD POR CATEGORÍA</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">{best_cat}</h2>
@@ -1543,8 +1545,8 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                     </p>
                 </div>
               """)
-          else:
-              st.html(f"""
+        else:
+            st.html(f"""
               <div style="background: linear-gradient(135deg, {COLOR_PURPLE_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">LÍDER DE RENTABILIDAD POR CATEGORÍA</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">--</h2>
@@ -1554,13 +1556,13 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                     </p>
                 </div>
               """)
-      with c2:
-          # Top selling category by total sales
-          by_cat = aggs.get("by_category", pd.DataFrame())
-          if not by_cat.empty:
-              top_cat = by_cat.loc[by_cat["Total_Sales"].idxmax(), "Category"]
-              top_sales = by_cat["Total_Sales"].max()
-              st.html(f"""
+    with c2:
+        # Top selling category by total sales
+        by_cat = aggs.get("by_category", pd.DataFrame())
+        if not by_cat.empty:
+            top_cat = by_cat.loc[by_cat["Total_Sales"].idxmax(), "Category"]
+            top_sales = by_cat["Total_Sales"].max()
+            st.html(f"""
               <div style="background: linear-gradient(135deg, {COLOR_PURPLE_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">LÍDER EN VOLUMEN DE VENTAS</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">{top_cat}</h2>
@@ -1570,8 +1572,8 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                     </p>
                 </div>
               """)
-          else:
-              st.html(f"""
+        else:
+            st.html(f"""
               <div style="background: linear-gradient(135deg, {COLOR_PURPLE_DARK}, {COLOR_POS_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">LÍDER EN VOLUMEN DE VENTAS</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">--</h2>
@@ -1582,46 +1584,47 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                 </div>
               """)
 
-      # Local filter in mosaic layout
-      f1, f2 = st.columns([2, 1])
-      with f1:
-          all_cats = sorted(data["Category"].dropna().unique().tolist())
-          sel_cats = st.multiselect(
-              "Seleccione las Categorías a Mostrar",
-              options=all_cats,
-              default=all_cats,
-              key="lollipop_cats",
-              help="Permite definir una o varias categorías a mostrar en el gráfico exploratorio del márgen de ganancia por nivel de descuento."
-          )
-      with f2:
-          st.caption("Vista de Margen de Ganancia por Categoría")
-          st.write(f"Mostrando **{len(sel_cats)}** de **{len(all_cats)}** categorías.")
-      if not aggs.get("margin_by_category", pd.DataFrame()).empty:
-          st.plotly_chart(
-              plot_lollipop(aggs["margin_by_category"], sel_cats),
-              use_container_width=True,
-              config={
-                  "displaylogo": False,
-                  "displayModeBar": False}
-          )
+    # Local filter in mosaic layout
+    f1, f2 = st.columns([2, 1])
+    with f1:
+        all_cats = sorted(data["Category"].dropna().unique().tolist())
+        sel_cats = st.multiselect(
+            "Seleccione las Categorías a Mostrar",
+            options=all_cats,
+            default=all_cats,
+            key="lollipop_cats",
+            help="Permite definir una o varias categorías a mostrar en el gráfico exploratorio del márgen de ganancia por nivel de descuento."
+        )
+    with f2:
+        st.caption("Vista de Margen de Ganancia por Categoría")
+        st.write(f"Mostrando **{len(sel_cats)}** de **{len(all_cats)}** categorías.")
+    if not aggs.get("margin_by_category", pd.DataFrame()).empty:
+        st.plotly_chart(
+            plot_lollipop(aggs["margin_by_category"], sel_cats),
+            use_container_width=True,
+            config={
+                "displaylogo": False,
+                "displayModeBar": False}
+        )
 
-      # --- Heatmap ---
-      st.markdown("---")
-      st.html(
-          """
-          <h3>Exploración del Margen de Ganancia Promedio por Subcategoría</h3>
-          """
-      )
-      # KPI Cards (2-Column)
-      c1, c2 = st.columns(2)
-      with c1:
-          # Best performing sub-category
-          margin_by_subcat = aggs.get("by_subcategory", pd.DataFrame())
-          if not aggs.get("by_subcategory", pd.DataFrame()).empty:
-              margin_by_subcat = aggs["by_subcategory"]
-              best_subcat = margin_by_subcat.loc[margin_by_subcat["Profit_Margin_Pct"].idxmax()]["Sub_Category"]
-              best_subcat_margin = margin_by_subcat.loc[margin_by_subcat["Profit_Margin_Pct"].idxmax()]["Profit_Margin_Pct"]
-              st.html(f"""
+    # --- Heatmap ---
+    st.markdown("---")
+    st.html(
+        """
+        <h3>Exploración del Margen de Ganancia Promedio por Subcategoría</h3>
+        """
+    )
+    # KPI Cards (2-Column)
+    c1, c2 = st.columns(2)
+    with c1:
+        # Best performing sub-category
+        margin_by_subcat = aggs.get("by_subcategory", pd.DataFrame())
+        if not aggs.get("by_subcategory", pd.DataFrame()).empty:
+            margin_by_subcat = aggs["by_subcategory"]
+            best_subcat = margin_by_subcat.loc[margin_by_subcat["Profit_Margin_Pct"].idxmax()]["Sub_Category"]
+            best_subcat_margin = margin_by_subcat.loc[margin_by_subcat["Profit_Margin_Pct"].idxmax()][
+                "Profit_Margin_Pct"]
+            st.html(f"""
               <div style="background: linear-gradient(135deg, {COLOR_BROWN_DARK}, {COLOR_BROWN_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">SUBCATEGORÍA CON MEJOR DESEMPEÑO</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">{best_subcat}</h2>
@@ -1631,8 +1634,8 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                     </p>
                 </div>
               """)
-          else:
-              st.html(f"""
+        else:
+            st.html(f"""
               <div style="background: linear-gradient(135deg, {COLOR_BROWN_DARK}, {COLOR_BROWN_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">SUBCATEGORÍA CON MEJOR DESEMPEÑO</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">--</h2>
@@ -1642,13 +1645,13 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                     </p>
                 </div>
               """)
-      with c2:
-          # Worst performing sub-category
-          if not margin_by_subcat.empty:
-              worst_subcat = margin_by_subcat.loc[margin_by_subcat["Profit_Margin_Pct"].idxmin()]["Sub_Category"]
-              worst_subcat_margin = margin_by_subcat.loc[margin_by_subcat["Profit_Margin_Pct"].idxmin()][
-                  "Profit_Margin_Pct"]
-              st.html(f"""
+    with c2:
+        # Worst performing sub-category
+        if not margin_by_subcat.empty:
+            worst_subcat = margin_by_subcat.loc[margin_by_subcat["Profit_Margin_Pct"].idxmin()]["Sub_Category"]
+            worst_subcat_margin = margin_by_subcat.loc[margin_by_subcat["Profit_Margin_Pct"].idxmin()][
+                "Profit_Margin_Pct"]
+            st.html(f"""
               <div style="background: linear-gradient(135deg, {COLOR_RED_DARK}, {COLOR_RED_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">SUBCATEGORÍA CRÍTICA (BAJO MARGEN)</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">{worst_subcat}</h2>
@@ -1658,8 +1661,8 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                     </p>
                 </div>
               """)
-          else:
-              st.html(f"""
+        else:
+            st.html(f"""
               <div style="background: linear-gradient(135deg, {COLOR_RED_DARK}, {COLOR_RED_LIGHT}); padding: 25px; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <h4 style="margin: 0; font-weight: 300; letter-spacing: 1px;">SUBCATEGORÍA CRÍTICA (BAJO MARGEN)</h4>
                     <h2 style="margin: 15px 0; font-size: 2.2em;">--</h2>
@@ -1670,35 +1673,38 @@ def render_tab_overview(data: pd.DataFrame, aggs: dict):
                 </div>
               """)
 
-      # Select All option in mosaic layout
-      f1, f2 = st.columns([2, 1])
-      with f1:
-          all_subs = sorted(data["Sub-Category"].dropna().unique().tolist())
-          if st.toggle("Mostrar todas las Subcategorías Comerciales", value=True, key="line_select_all", help="Permite definir una o más subcategorías para explorar la tendencia de su margen de ganancia por nivel de descuento."):
-              sel_subs = all_subs
-          else:
-              sel_subs = st.multiselect(
-                  "Selecccionar Subcategorías a Mostrar", options=all_subs, default=all_subs, key="line_subs"
-              )
-      with f2:
-          top_n = st.number_input("Mostrar Top N Subcategorías", min_value=1, value=5, key="line_top_n", help="Permite definir el número de subcategorías a mostrar en el gráfico exploratorio del margen de ganancia por nivel de descuento. Si se activa la opción 'Mostrar todas las Subcategorías Comerciales', este filtro se deshabilita automáticamente.")
+    # Select All option in mosaic layout
+    f1, f2 = st.columns([2, 1])
+    with f1:
+        all_subs = sorted(data["Sub-Category"].dropna().unique().tolist())
+        if st.toggle("Mostrar todas las Subcategorías Comerciales", value=True, key="line_select_all",
+                     help="Permite definir una o más subcategorías para explorar la tendencia de su margen de ganancia por nivel de descuento."):
+            sel_subs = all_subs
+        else:
+            sel_subs = st.multiselect(
+                "Selecccionar Subcategorías a Mostrar", options=all_subs, default=all_subs, key="line_subs"
+            )
+    with f2:
+        top_n = st.number_input("Mostrar Top N Subcategorías", min_value=1, value=5, key="line_top_n",
+                                help="Permite definir el número de subcategorías a mostrar en el gráfico exploratorio del margen de ganancia por nivel de descuento. Si se activa la opción 'Mostrar todas las Subcategorías Comerciales', este filtro se deshabilita automáticamente.")
 
-      if not aggs.get("margin_by_subcategory", pd.DataFrame()).empty:
-          fig = plot_heatmap(aggs["margin_by_subcategory"], sel_subs, top_n if not st.session_state.get("line_select_all") else None)
-          if fig:
-              st.plotly_chart(fig, use_container_width=True, config={
-                  "displaylogo": False,
-                  "displayModeBar": False,
-                  'modeBarButtonsToRemove': ['toImage','resetScale2d','fullscreen']
-              })
+    if not aggs.get("margin_by_subcategory", pd.DataFrame()).empty:
+        fig = plot_heatmap(aggs["margin_by_subcategory"], sel_subs,
+                           top_n if not st.session_state.get("line_select_all") else None)
+        if fig:
+            st.plotly_chart(fig, use_container_width=True, config={
+                "displaylogo": False,
+                "displayModeBar": False,
+                'modeBarButtonsToRemove': ['toImage', 'resetScale2d', 'fullscreen']
+            })
 
 
 def render_tab_scatter(data: pd.DataFrame, aggs: dict):
     """Tab 2: Scatter Plots."""
     st.html("""
-    
+
     <h2> Exploración de la Rentabilidad vs Volúmen de Ventas por Categoría y Subcategoría </h2>
-    
+
     <small><i>Este dashboard permite explorar la relación entre la rentabilidad y el volumen de ventas de cada categoría y subcategoría 
     del minorista Superstore Giant. Se pueden aplicar filtros para analizar diferentes segmentos del negocio, mecanismos de envío, y datos geográficos
     de los clientes.</i></small>
@@ -1780,7 +1786,6 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
 
     # --- Second Row KPI Cards: Sales Volume Analysis (3-Column) ---
 
-
     if not aggs.get("by_subcategory", pd.DataFrame()).empty:
         # Highest sales
         highest_sales = subcat_data.loc[subcat_data["Total_Sales"].idxmax()]
@@ -1856,7 +1861,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
     <h3>Exploración de Margen de Ganancia Porcentual vs Total de Ventas por Categoría</h3>
     """)
 
-    cc1,cc2 = st.columns(2)
+    cc1, cc2 = st.columns(2)
 
     with cc1:
         if not aggs.get("by_category", pd.DataFrame()).empty:
@@ -1885,7 +1890,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
             average_margin_by_cat = cat_data["Profit_Margin_Pct"].mean()
             average_sales_by_cat = cat_data["Total_Sales"].mean()
             st.html(f"""
-            <div style="background: linear-gradient(135deg, {_return_color_for_cell_based_on_values(worst_cat['Profit_Margin_Pct'],worst_cat['Total_Sales'],average_margin_by_cat, average_sales_by_cat)},{_return_color_for_cell_based_on_values(worst_cat['Profit_Margin_Pct'],worst_cat['Total_Sales'],average_margin_by_cat, average_sales_by_cat)}); padding: 20px; border-radius: 12px; color: white; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+            <div style="background: linear-gradient(135deg, {_return_color_for_cell_based_on_values(worst_cat['Profit_Margin_Pct'], worst_cat['Total_Sales'], average_margin_by_cat, average_sales_by_cat)},{_return_color_for_cell_based_on_values(worst_cat['Profit_Margin_Pct'], worst_cat['Total_Sales'], average_margin_by_cat, average_sales_by_cat)}); padding: 20px; border-radius: 12px; color: white; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
                 <p style="margin: 0; font-size: 0.95em; line-height: 1.5;">
                     <b>{worst_cat['Category']}</b> con un margen de <b>{worst_cat['Profit_Margin_Pct']:.2f}%</b> y facturación de <b>${worst_cat['Total_Sales']:,.2f}</b> es la categoría sugerida para su revisión y seguimiento.
                 </p>
@@ -1918,15 +1923,16 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
                 help="Filtro de ventas mínimas para inclusión de categorías en el gráfico"
             )
         else:
-            min_sales = st.number_input("Umbral de Ventas Totales Mínimas", value=0, key="scatter_cat_min_sales", format='%d')
+            min_sales = st.number_input("Umbral de Ventas Totales Mínimas", value=0, key="scatter_cat_min_sales",
+                                        format='%d')
     with f2:
         if not aggs.get("by_category", pd.DataFrame()).empty:
             data = aggs.get("by_category", pd.DataFrame())
-            min_margin = int(data["Profit_Margin_Pct"].min()) *1.15
-            max_margin = int(data["Profit_Margin_Pct"].max()) *1.15
+            min_margin = int(data["Profit_Margin_Pct"].min()) * 1.15
+            max_margin = int(data["Profit_Margin_Pct"].max()) * 1.15
             margin_range = st.slider(
                 "Rango de Márgen de Ganancias ",
-                min_value=-100, max_value=100,value=(-100,100), key="scatter_cat_margin",
+                min_value=-100, max_value=100, value=(-100, 100), key="scatter_cat_margin",
                 help="Rango de margen de ganancia para inclusión de categorías en el gráfico",
 
             )
@@ -1940,8 +1946,8 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
         )
         if fig:
             st.plotly_chart(fig, use_container_width=True, config={
-                      "displaylogo": False,
-                      "displayModeBar": False})
+                "displaylogo": False,
+                "displayModeBar": False})
 
     st.markdown("---")
 
@@ -1977,7 +1983,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
             cat_data = aggs["by_subcategory"]
             worst_cat = cat_data.loc[cat_data["Profit_Margin_Pct"].idxmin()]
             st.html(f"""
-                <div style="background: linear-gradient(135deg, {_return_color_for_cell_based_on_values(worst_cat['Profit_Margin_Pct'],worst_cat['Total_Sales'],average_margin_by_cat, average_sales_by_cat)}, {_return_color_for_cell_based_on_values(worst_cat['Profit_Margin_Pct'],worst_cat['Total_Sales'],average_margin_by_cat, average_sales_by_cat)}); padding: 20px; border-radius: 12px; color: white; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                <div style="background: linear-gradient(135deg, {_return_color_for_cell_based_on_values(worst_cat['Profit_Margin_Pct'], worst_cat['Total_Sales'], average_margin_by_cat, average_sales_by_cat)}, {_return_color_for_cell_based_on_values(worst_cat['Profit_Margin_Pct'], worst_cat['Total_Sales'], average_margin_by_cat, average_sales_by_cat)}); padding: 20px; border-radius: 12px; color: white; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
                     <p style="margin: 0; font-size: 0.95em; line-height: 1.5;">
                         <b>{worst_cat['Sub_Category']}</b> con margen del <b>{worst_cat['Profit_Margin_Pct']:.2f}%</b> y facturación de <b>${worst_cat['Total_Sales']:,.2f} </b> dentro de la categoría <b>{worst_cat['Category']} </b>corresponde a la categoría con el más bajo rendimiento en el periodo de análisis.
                     </p>
@@ -2010,7 +2016,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
             20,
             17,
             key="scatter_sub_top_n",
-            help= "Mostrar las N subcategorías con mayores ventas totales"
+            help="Mostrar las N subcategorías con mayores ventas totales"
         )
 
     f3, f4 = st.columns(2)
@@ -2031,7 +2037,7 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
             )
         else:
             min_sales_sub = st.number_input("Umbral de Ventas Totales Mínimas", value=0, key="scatter_subcat_min_sales",
-                                        format='%d')
+                                            format='%d')
     with f4:
         if not aggs.get("by_subcategory", pd.DataFrame()).empty:
             data = aggs.get("by_subcategory", pd.DataFrame())
@@ -2044,7 +2050,8 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
 
             )
         else:
-            margin_range_sub = st.slider("Rango de Márgen de Ganancias ", -100, 100, (-100, 100), key="scatter_subcat_margin")
+            margin_range_sub = st.slider("Rango de Márgen de Ganancias ", -100, 100, (-100, 100),
+                                         key="scatter_subcat_margin")
 
     # Chart
     if not aggs.get("by_subcategory", pd.DataFrame()).empty:
@@ -2053,8 +2060,8 @@ def render_tab_scatter(data: pd.DataFrame, aggs: dict):
         )
         if fig:
             st.plotly_chart(fig, use_container_width=True, config={
-                      "displaylogo": False,
-                      "displayModeBar": False})
+                "displaylogo": False,
+                "displayModeBar": False})
 
 
 def render_tab_pricing(data: pd.DataFrame, aggs: dict):
@@ -2067,7 +2074,6 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
         se identifican los pilares estratégicos que sustentan el crecimiento del minorista Superstore Giant.
     </i></small>
     """)
-
 
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -2097,7 +2103,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
                   </p>
               </div>
             """)
-    
+
     with c2:
         # Average customer purchase value (from customer_value_by_category)
         agg_cv = aggs.get("customer_value_by_category", pd.DataFrame())
@@ -2126,7 +2132,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
                   </p>
               </div>
             """)
-    
+
     with c3:
         # Most efficient pricing category (highest margin) - from price_volume_by_category
         if not agg_pv.empty:
@@ -2157,7 +2163,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
     # --- Price-Volume-Profit Bubble Chart ---
     st.markdown("---")
     st.html("<h3>Análisis de la relación entre Precio-Volumen-Márgen por Categoría</h3>")
-    
+
     c1, c2 = st.columns(2)
     with c1:
         # Highest revenue category (from aggs)
@@ -2182,7 +2188,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
                   <p style="margin: 10px 0 0 0; font-size: 0.9em; color: {WHITE}; line-height: 1.4;">No hay datos disponibles para los filtros seleccionados.</p>
               </div>
             """)
-    
+
     with c2:
         # Transaction count
         total_transactions = len(data)
@@ -2195,7 +2201,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
               <p style="margin: 10px 0 0 0; font-size: 0.9em; color: {WHITE}; line-height: 1.4;">Refleja la intensidad de la demanda y la recurrencia operativa del portafolio.</p>
           </div>
         """)
-    
+
     # Filters for bubble chart
     f1, f2 = st.columns(2)
     with f1:
@@ -2220,7 +2226,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
             key="bubble_margin_range",
             help="Define el espectro de rentabilidad para el análisis comparativo."
         )
-    
+
     # Apply filters and plot
     agg_bubble = aggs.get("price_volume_by_category", pd.DataFrame())
     if not agg_bubble.empty:
@@ -2228,8 +2234,8 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
             (agg_bubble['Total_Revenue'] >= min_revenue_filter) &
             (agg_bubble['Profit_Margin_Pct'] >= margin_range_bubble[0]) &
             (agg_bubble['Profit_Margin_Pct'] <= margin_range_bubble[1])
-        ]
-        
+            ]
+
         if not filtered_bubble.empty:
             st.plotly_chart(
                 plot_price_volume_profit_bubble(filtered_bubble),
@@ -2238,7 +2244,6 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
             )
         else:
             st.warning("No se encontraron categorías que cumplan con los criterios de filtrado seleccionados.")
-
 
     st.markdown("---")
     st.html("<h3 >Impacto de Descuentos en la Compra Promedio de un Cliente</h3>")
@@ -2267,7 +2272,7 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
                   <p style="margin: 10px 0 0 0; font-size: 0.85em; opacity: 0.9;">No hay datos disponibles para los filtros seleccionados.</p>
               </div>
             """)
-    
+
     # Filters for line chart
     f1, f2 = st.columns(2)
     with f1:
@@ -2290,20 +2295,20 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
             key="line_customer_value_range",
             help="Filtrar categorías según su valor promedio por cliente."
         )
-    
+
     # Apply filters and plot
     agg_line = aggs.get("customer_purchase_by_discount", pd.DataFrame())
     if not agg_line.empty:
         filtered_line = agg_line.copy()
         if sel_cats_line:
             filtered_line = filtered_line[filtered_line['Category'].isin(sel_cats_line)]
-        
+
         # Filter by customer value range using per-category averages
         cat_avg = filtered_line.groupby('Category')['Avg_Purchase_Per_Customer'].mean()
         valid_cats = [cat for cat in cat_avg.index
                       if customer_value_range[0] <= cat_avg[cat] <= customer_value_range[1]]
         filtered_line = filtered_line[filtered_line['Category'].isin(valid_cats)]
-        
+
         if not filtered_line.empty:
             st.plotly_chart(
                 plot_avg_customer_purchase_by_discount(filtered_line),
@@ -2312,7 +2317,6 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
             )
         else:
             st.info("Ajuste los filtros para visualizar la dinámica de valor.")
-
 
 
 def render_tab_data(data: pd.DataFrame, aggs: dict):
@@ -2374,8 +2378,8 @@ def main():
 
     # Tabbed layout
     tabs = st.tabs([
-        "Visión Rentabilidad por Descuentos", 
-        "Visión Rentabilidad por Categoría y Subcategoría", 
+        "Visión Rentabilidad por Descuentos",
+        "Visión Rentabilidad por Categoría y Subcategoría",
         "Visión Estrategia de Precios",
         "Visión Datos Usados"
     ])
