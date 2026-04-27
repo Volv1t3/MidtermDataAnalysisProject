@@ -67,13 +67,32 @@ DISCOUNT_LABELS = [
 ]
 
 
+#? 1. Definimos la primera funcion base de la aplicacion, que prepara os datos al realizar calculos necesarios base como
+#? el margen de ganancia y su contraparte porcentual para cada fila.
 def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Add required derived columns."""
-    df = df.copy()
-    df["Profit_Margin"] = np.where(df["Sales"] > 0, df["Profit"] / df["Sales"], 0)
-    df["Profit_Margin_Pct"] = df["Profit_Margin"] * 100
-    df["Discount_Bin"] = pd.cut(
-        df["Discount"], bins=DISCOUNT_BINS, labels=DISCOUNT_LABELS, include_lowest=True
+    """
+    Prepara el dataset base realizando calculos y asignaciones necesarias para la visualizacion.
+
+    Operaciones realizadas:
+    - Calcula Profit_Margin (Profit / Sales) asignando 0 cuando Sales es menor o igual a 0 para evitar divisiones por cero.
+    - Calcula Profit_Margin_Pct como porcentaje del margen.
+    - Asigna una etiqueta de rango de descuento (Discount_Bin) usando DISCOUNT_BINS y DISCOUNT_LABELS con pd.cut.
+
+    Args:
+        data_df: DataFrame original cargado desde el CSV.
+
+    Returns:
+        DataFrame con las columnas nuevas Profit_Margin, Profit_Margin_Pct y Discount_Bin.
+    """
+    data_df = df.copy()
+    #? Margen de Ganancia
+    data_df["Profit_Margin"] = np.where(data_df["Sales"] > 0, data_df["Profit"] / data_df["Sales"], 0)
+    data_df["Profit_Margin_Pct"] = data_df["Profit_Margin"] * 100
+
+    #? Discount bin usando pd.cut para asignarle a cada fila un discount bin label en base de donde cae su valor de
+    #? descuento
+    data_df["Discount_Bin"] = pd.cut(
+        data_df["Discount"], bins=DISCOUNT_BINS, labels=DISCOUNT_LABELS, include_lowest=True
     )
     return data_df
 
