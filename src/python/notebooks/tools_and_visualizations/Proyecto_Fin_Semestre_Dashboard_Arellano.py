@@ -13,7 +13,6 @@ import datetime
 import math
 from datetime import timedelta
 from typing import Iterable, Any
-
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -21,8 +20,6 @@ import streamlit as st
 from plotly.graph_objs import Figure
 from plotly.subplots import make_subplots
 import os
-
-from scipy.optimize import nonlin
 
 #? Definicion de colores para la visualizacion, esta seccion define todos los tonos usados para las
 #? visualizaciones, y los KPIs
@@ -472,8 +469,7 @@ def get_aggregations(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
         return {}
 
     #? 1.1 Calculamos la agregacion del promedio de ganancia por rango de descuento para la visualizacion 1 y
-    #? resetamos el indice para tener las bins y el profit como clumnas y no eje. Definimos observed=True para que
-    #? si en el filtro de datos no existe un discount bin se registre como cero
+    #? resetamos el indice para tener las bins y el profit como clumnas y no eje.
     agg_profit_by_discount = (
         df.groupby("Discount_Bin", observed=True)["Profit"].mean().reset_index()
     )
@@ -700,7 +696,7 @@ def plot_waterfall(agg_profit: pd.DataFrame, agg_margin: pd.DataFrame) -> Figure
 
 
 
-def plot_lollipop(agg_margin_by_cat: pd.DataFrame, selected_categories= None | Iterable[Any]) -> Figure:
+def plot_lollipop(agg_margin_by_cat: pd.DataFrame, selected_categories: None | Iterable[Any]) -> Figure:
     """
     Grafico de lollipop para mostrar el margen de ganancia promedio por categoria y por rango de descuento
     :param agg_margin_by_cat:
@@ -811,7 +807,7 @@ def plot_lollipop(agg_margin_by_cat: pd.DataFrame, selected_categories= None | I
 
 
 
-def plot_heatmap(agg_margin_by_subcat: pd.DataFrame, selected_subcats=None | Iterable[Any], top_n=None | int) -> Figure | None:
+def plot_heatmap(agg_margin_by_subcat: pd.DataFrame, selected_subcats: Iterable[Any], top_n: int) -> Figure | None:
     """
     Grafico de heatmap para mostrar el margen de ganancia promedio por subcategoria y por rango de descuento
     :param agg_margin_by_subcat:
@@ -1471,7 +1467,7 @@ def render_sidebar(data: pd.DataFrame | None):
     """Render sidebar controls."""
     st.sidebar.title("Controles de Filtros Generales")
     st.sidebar.markdown(
-        "Filtros generales para toda la dashboardoard. Estos filtros afectan a todas las visualizaciones y permiten segmentar los datos por tiempo, región, mecanismo de envío, y ubicación geográfica del cliente.")
+        "Filtros generales para toda la dashboard Estos filtros afectan a todas las visualizaciones y permiten segmentar los datos por tiempo, región, mecanismo de envío, y ubicación geográfica del cliente.")
 
     # --- Global Filters ---
     st.sidebar.subheader("Filtros Temporales")
