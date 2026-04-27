@@ -29,6 +29,7 @@ COLOR_WARNING = '#D78019'
 COLOR_ATTENTION = '#0C1726'
 COLOR_BG = "#F2F2F4"
 COLOR_LINE = "#5A5A5C"
+
 COLOR_GREEN_DARK = "#253B59"
 COLOR_GREEN_LIGHT = "#4A678C"
 COLOR_GREEN = "#6E8C03"
@@ -44,49 +45,35 @@ COLOR_PURPLE_LIGHT = "#C1B3F2"
 COLOR_RED_DARK = "#D9043D"
 COLOR_RED_LIGHT = "#F291A3"
 
-#? Definimos los colores de las categorias para su visualizacion en graficos de burbuja
+# ? Recently Modified -> https://color.adobe.com/search?q=business
 CATEGORY_COLORS = {
-    "Furniture": COLOR_BROWN_DARK,
-    "Office Supplies": "#025940",
-    "Technology": "#3A5898",
+    "Furniture": COLOR_BROWN_DARK,  # Blue
+    "Office Supplies": "#025940",  # Green!
+    "Technology": "#3A5898",  # Green
 }
 
-
-#? Definimos los bins usados para el rango de descuento dado que queremos aislar la manipulacion de datos a funcioens
-#? especificas
 DISCOUNT_BINS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-#? Aqui definimos las etiquetas de cada una de las bins creadas, esto nos permite darle valores especificos a la funcion
-#? de pd.cut para que tenga las bins hechas ya con los rangos de descuentos necesarios y con las labels para las
-#? visualzaciones
-DISCOUNT_LABELS = ["0-0.1","0.1-0.2","0.2-0.3","0.3-0.4","0.4-0.5","0.5-0.6","0.6-0.7","0.7-0.8","0.8-0.9","0.9-1.0"]
+DISCOUNT_LABELS = [
+    "0-0.1",
+    "0.1-0.2",
+    "0.2-0.3",
+    "0.3-0.4",
+    "0.4-0.5",
+    "0.5-0.6",
+    "0.6-0.7",
+    "0.7-0.8",
+    "0.8-0.9",
+    "0.9-1.0"
+]
 
 
-#? 1. Definimos la primera funcion base de la aplicacion, que prepara os datos al realizar calculos necesarios base como
-#? el margen de ganancia y su contraparte porcentual para cada fila.
-def prepare_data(data_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Prepara el dataset base realizando calculos y asignaciones necesarias para la visualizacion.
-
-    Operaciones realizadas:
-    - Calcula Profit_Margin (Profit / Sales) asignando 0 cuando Sales es menor o igual a 0 para evitar divisiones por cero.
-    - Calcula Profit_Margin_Pct como porcentaje del margen.
-    - Asigna una etiqueta de rango de descuento (Discount_Bin) usando DISCOUNT_BINS y DISCOUNT_LABELS con pd.cut.
-
-    Args:
-        data_df: DataFrame original cargado desde el CSV.
-
-    Returns:
-        DataFrame con las columnas nuevas Profit_Margin, Profit_Margin_Pct y Discount_Bin.
-    """
-    data_df = data_df.copy()
-    #? Margen de Ganancia
-    data_df["Profit_Margin"] = np.where(data_df["Sales"] > 0, data_df["Profit"] / data_df["Sales"], 0)
-    data_df["Profit_Margin_Pct"] = data_df["Profit_Margin"] * 100
-
-    #? Discount bin usando pd.cut para asignarle a cada fila un discount bin label en base de donde cae su valor de
-    #? descuento
-    data_df["Discount_Bin"] = pd.cut(
-        data_df["Discount"], bins=DISCOUNT_BINS, labels=DISCOUNT_LABELS, include_lowest=True
+def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Add required derived columns."""
+    df = df.copy()
+    df["Profit_Margin"] = np.where(df["Sales"] > 0, df["Profit"] / df["Sales"], 0)
+    df["Profit_Margin_Pct"] = df["Profit_Margin"] * 100
+    df["Discount_Bin"] = pd.cut(
+        df["Discount"], bins=DISCOUNT_BINS, labels=DISCOUNT_LABELS, include_lowest=True
     )
     return data_df
 
@@ -109,8 +96,6 @@ def _apply_standard_theme(fig, title, subtitle) -> Figure:
     #? Armamos la cadena del titulo con el formato adecuado
     full_title = f"<b>{title}</b><br><i><span style='font-size:12px;font-weight:200;color:#666'>{subtitle}</span></i>"
 
-    #? Actualizamos el layotu de la figura con el titulo arriba  la izquierda del grafico, y con un formato de fuente
-    #? especifico, junto con el tamano de la figura y los margenes para que se vea bien
     fig.update_layout(
         title={
             "text": full_title,
@@ -135,21 +120,9 @@ def _apply_standard_theme(fig, title, subtitle) -> Figure:
     return fig
 
 
-def _apply_x_axis_customization(
-        figure,
-        x_label=None,
-        x_ticks=None,
-        x_tick_labels=None,
-        tick_angle=30,
-        x_axis_style=None,
-        x_axis_label_distance: float = -0.12,
-        row_id=None,
-        column_id=None):
-    """
-    Personaliza el eje X de una figura o subplot de plotly.
-
-    Se pueden pasar ticks, labels, angulo y un diccionario de estilo personalizado. Si row_id y column_id
-    estan definidos, la personalizacion se aplica al subplot especifico.
+def _apply_x_axis_customization(figure, x_label=None, x_ticks=None, x_tick_labels=None, tick_angle=30,
+                                x_axis_style=None, x_axis_label_distance: int = -0.12, row_id=None, column_id=None):
+    """Apply x-axis customization to figure or subplot.
 
     Args:
         figure: Figura de plotly a modificar.
@@ -223,8 +196,7 @@ def _apply_y_axis_customization(figure,
                                 y_axis_lable_distance: float = -0.12,
                                 row_id=None,
                                 column_id=None):
-    """
-    Personaliza el eje Y de una figura o subplot de plotly.
+    """Apply y-axis customization to figure or subplot.
 
     Args:
         figure: Figura de plotly a modificar.
@@ -252,21 +224,21 @@ def _apply_y_axis_customization(figure,
         "tickcolor": COLOR_LINE,
     }
 
-    #? Usamos el estilo por defecto o el pasado por parametro
+    # Use provided style or default
     style = y_axis_style if y_axis_style else default_style
 
-    #? Ticks
+    # Add tick values and labels if provided
     if y_ticks is not None:
         style["tickvals"] = y_ticks
         style["ticktext"] = y_tick_labels if y_tick_labels else [str(t) for t in y_ticks]
 
-    #? Actualizamos el eje y de la figura con el estilo aplicado, si tenemos row y col id a ese subplot sino a toda la figura
+    # Apply to specific subplot or entire figure
     if row_id is not None and column_id is not None:
         figure.update_yaxes(style, row=row_id, col=column_id)
     else:
         figure.update_yaxes(style)
 
-    #? Aplicamos la label del eje y si tenemos un y_label
+    # Add y-axis label annotation if provided
     if y_label:
         annotation_config = {
             "xref": "x domain",
@@ -291,6 +263,9 @@ def _apply_y_axis_customization(figure,
     return figure
 
 
+# =============================================================================
+# Filtering
+# =============================================================================
 
 def apply_filters(
         df: pd.DataFrame,
