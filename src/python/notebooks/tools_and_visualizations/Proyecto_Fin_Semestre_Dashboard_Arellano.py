@@ -1,21 +1,28 @@
+#? ---------------------------------------------------------------------------------------------------------------------
+#? Proyecto de Fin de Semestre ADM 3083 Herramientas y Visualizacion
+#? Dashboard Analitica y de Resultados para Superstore Giant
+#? Santiago Arellano 00328370
+#? Lunes, 20 de abril de 2026
+#?
+#? ---------------------------------------------------------------------------------------------------------------------
+
+
+
+#? Importe de librerias locales necesarias para el trabajo
 import datetime
-import json
 import math
 from datetime import timedelta
-from logging import getLogger
-from typing import Any, Iterable
+from typing import Iterable, Any
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from matplotlib.pyplot import ticklabel_format
+from plotly.graph_objs import Figure
 from plotly.subplots import make_subplots
 import os
 
-# =============================================================================
-# Data Preparation & Constants
-# =============================================================================
-
+#? Definicion de colores para la visualizacion, esta seccion define todos los tonos usados para las
+#? visualizaciones, y los KPIs
 COLOR_POSITIVE = "#4A678C"
 COLOR_NEGATIVE = "#731A06"
 COLOR_WARNING = '#D78019'
@@ -28,7 +35,7 @@ COLOR_GREEN_LIGHT = "#4A678C"
 COLOR_GREEN = "#6E8C03"
 COLOR_RED = "#E01518"
 COLOR_GREY = "#A4A4A4"
-WHITE = "#FFFFFF"
+COLOR_WHITE = "#FFFFFF"
 COLOR_POS_DARK = "#516D73"
 COLOR_POS_LIGHT = '#C1D4D9'
 COLOR_BROWN_DARK = "#BA9B65"
@@ -68,25 +75,25 @@ def prepare_data(df: pd.DataFrame) -> pd.DataFrame:
     df["Discount_Bin"] = pd.cut(
         df["Discount"], bins=DISCOUNT_BINS, labels=DISCOUNT_LABELS, include_lowest=True
     )
-    return df
+    return data_df
 
 
-def generate_color_gradient(n: int):
-    """Generate gradient colors for sub-categories."""
-    colors = []
-    for i in range(n):
-        ratio = i / (n - 1) if n > 1 else 0
-        r1, g1, b1 = int(COLOR_GREEN_DARK[1:3], 16), int(COLOR_GREEN_DARK[3:5], 16), int(COLOR_GREEN_DARK[5:7], 16)
-        r2, g2, b2 = int(COLOR_GREEN_LIGHT[1:3], 16), int(COLOR_GREEN_LIGHT[3:5], 16), int(COLOR_GREEN_LIGHT[5:7], 16)
-        r = int(r1 + (r2 - r1) * ratio)
-        g = int(g1 + (g2 - g1) * ratio)
-        b = int(b1 + (b2 - b1) * ratio)
-        colors.append(f"#{r:02x}{g:02x}{b:02x}")
-    return colors
+#? 2. Funcion auxiliar definida para aplicar un formato estandar de titulo, subtitulo, margen y tamano. Esta funcion
+#? fue extraida de la funcion para modificacion del eje x e y para tener el titulo aislado y modificable por su cuenta
+def _apply_standard_theme(fig, title, subtitle) -> Figure:
+    """
+    Aplica el formato estandar de titulo, tamano y margenes a una figura de plotly.
 
+    Args:
+        fig: Instancia de plotly Figure a modificar.
+        title: Texto principal del titulo (se muestra en negrita).
+        subtitle: Texto de subtitulo/insight (se coloca en fuente mas pequena y estilo italic).
 
-def _apply_standard_theme(fig, title, subtitle):
-    """Unified styling for all dashboard graphs."""
+    Returns:
+        La misma figura modificada con layout actualizado.
+    """
+
+    #? Armamos la cadena del titulo con el formato adecuado
     full_title = f"<b>{title}</b><br><i><span style='font-size:12px;font-weight:200;color:#666'>{subtitle}</span></i>"
 
     fig.update_layout(
@@ -109,6 +116,7 @@ def _apply_standard_theme(fig, title, subtitle):
         ),
     )
 
+    #? Retornamos la instancia ingresada
     return fig
 
 
@@ -117,16 +125,22 @@ def _apply_x_axis_customization(figure, x_label=None, x_ticks=None, x_tick_label
     """Apply x-axis customization to figure or subplot.
 
     Args:
-        figure: Plotly figure object
-        x_label: Label text for x-axis
-        x_ticks: List of tick values
-        x_tick_labels: List of tick labels (derived from x_ticks if not provided)
-        tick_angle: Rotation angle for tick labels (default: 30)
-        x_axis_style: Dictionary with x-axis style configuration
-        row_id: Row index for subplot (1-indexed)
-        column_id: Column index for subplot (1-indexed)
+        figure: Figura de plotly a modificar.
+        x_label: Texto de la etiqueta del eje X (opcional).
+        x_ticks: Valores de tick para el eje X (opcional).
+        x_tick_labels: Etiquetas para los ticks (opcional).
+        tick_angle: Angulo de rotacion de los ticks.
+        x_axis_style: Diccionario con estilo para el eje.
+        x_axis_label_distance: Distancia de la etiqueta respecto al eje.
+        row_id: Fila de subplot (1-indexed) si aplica.
+        column_id: Columna de subplot (1-indexed) si aplica.
+
+    Returns:
+        La figura modificada.
     """
-    # Default x-axis style
+
+
+    #? Estilo de eje base
     default_style = {
         "showgrid": False,
         "title": "",
@@ -138,22 +152,20 @@ def _apply_x_axis_customization(figure, x_label=None, x_ticks=None, x_tick_label
         "tickwidth": 2,
         "tickcolor": COLOR_LINE,
     }
-
-    # Use provided style or default
     style = x_axis_style if x_axis_style else default_style
 
-    # Add tick values and labels if provided
+    #? Anadimos las ticks si las tenemos, y si tenemos tick labels las definimos, sino se derivan de los ticks
     if x_ticks is not None:
         style["tickvals"] = x_ticks
         style["ticktext"] = x_tick_labels if x_tick_labels else [str(t) for t in x_ticks]
 
-    # Apply to specific subplot or entire figure
+    #? Actualizamos el eje x de la figura con el estilo aplicado, si tenemos row y col id a ese subplot sino a toda la figura
     if row_id is not None and column_id is not None:
         figure.update_xaxes(style, row=row_id, col=column_id)
     else:
         figure.update_xaxes(style)
 
-    # Add x-axis label annotation if provided
+    #? Aplicamos la label del eje x si tenemos un x_label
     if x_label:
         annotation_config = {
             "xref": "paper", "yref": "y domain",
@@ -166,7 +178,6 @@ def _apply_x_axis_customization(figure, x_label=None, x_ticks=None, x_tick_label
             "font": dict(size=12, color=COLOR_LINE, family="Arial Black")
         }
 
-        # For subplots, adjust references
         if row_id is not None and column_id is not None:
             annotation_config["xref"] = f"x{column_id} domain" if column_id > 1 else "x domain"
             annotation_config["yref"] = f"y{row_id} domain" if row_id > 1 else "y domain"
@@ -188,15 +199,20 @@ def _apply_y_axis_customization(figure,
     """Apply y-axis customization to figure or subplot.
 
     Args:
-        figure: Plotly figure object
-        y_label: Label text for y-axis
-        y_ticks: List of tick values
-        y_tick_labels: List of tick labels (derived from y_ticks if not provided)
-        y_axis_style: Dictionary with y-axis style configuration
-        row_id: Row index for subplot (1-indexed)
-        column_id: Column index for subplot (1-indexed)
+        figure: Figura de plotly a modificar.
+        y_label: Texto de la etiqueta del eje Y (opcional).
+        y_ticks: Valores de tick para el eje Y (opcional).
+        y_tick_labels: Etiquetas para los ticks del eje Y (opcional).
+        y_axis_style: Diccionario con estilo para el eje Y.
+        y_tick_style: Estilo adicional para ticks aplicado al layout.
+        y_axis_lable_distance: Distancia de la etiqueta respecto al eje.
+        row_id: Fila de subplot (1-indexed) si aplica.
+        column_id: Columna de subplot (1-indexed) si aplica.
+
+    Returns:
+        La figura modificada.
     """
-    # Default y-axis style
+    #? Definoms un estilo base en donde no tenemos titulo  los dtos del eje se definen normalmente
     default_style = {
         "showgrid": False,
         "title": "",
@@ -235,8 +251,6 @@ def _apply_y_axis_customization(figure,
             "yanchor": "bottom",
             "font": dict(size=12, color=COLOR_LINE, family="Arial Black")
         }
-
-        # For subplots, adjust references
         if row_id is not None and column_id is not None:
             annotation_config["xref"] = f"x{column_id} domain" if column_id > 1 else "x domain"
             annotation_config["yref"] = f"y{row_id} domain" if row_id > 1 else "y domain"
@@ -262,16 +276,38 @@ def apply_filters(
         country_sel,
         state_sel,
         city_sel,
-) -> pd.DataFrame:
-    """Apply global sidebar filters to dataframe."""
+) -> pd.DataFrame | None:
+    """
+    Aplica los filtros seleccionados en la barra lateral sobre el dataframe recibido.
+
+    Soporta filtrado por rango de fechas (usando el campo time_field), region, modo de envio, pais, estado y ciudad.
+
+    Args:
+        df: DataFrame original.
+        date_range: Tupla (start_date, end_date) o None.
+        time_field: Nombre de la columna fecha a usar ('Order Date' o 'Ship Date').
+        region_sel, ship_sel, country_sel, state_sel, city_sel: Listas de valores seleccionados para filtrar.
+
+    Returns:
+        DataFrame filtrado (misma referencia si no aplica ningun filtro).
+    """
+
+    #? Si no tenemos datos retornamos el dataframe directamente
     if df is None or df.empty:
         return df
+
+    #? Aplicamos una mascara inicializada en true para todos los datos, la idea es que las operaciones binarias son
+    #? mas eficientes y rapidas que hacer operaciones de filtro en el dataframe directamente
     mask = pd.Series(True, index=df.index)
+
+    #? Si tenemos un date range y si tenemos dos fechas registradas y no son nulas entonces extraemos las dos fechas y
+    #? aplicamos el filtro de rango sobre el campo de fecha seleccionado, esto nos permite tener un filtro de tiempo dinamico
     if date_range and len(date_range) == 2 and date_range[0] and date_range[1]:
         start, end = date_range
         if time_field in df.columns:
             col = df[time_field]
             mask &= (col >= pd.to_datetime(start)) & (col <= pd.to_datetime(end))
+    #? Aplicamos los filtros de las columnas
     if region_sel:
         mask &= df["Region"].isin(region_sel)
     if ship_sel:
@@ -282,6 +318,8 @@ def apply_filters(
         mask &= df["State"].isin(state_sel)
     if city_sel:
         mask &= df["City"].isin(city_sel)
+
+    #? Al final retornamos el dataframe aplicada la mascara binaria
     return df.loc[mask]
 
 
@@ -291,55 +329,86 @@ def _return_color_for_cell_based_on_values(
         avg_margin,
         avg_sales
 ):
+    """
+    Devuelve un color de celda segun la comparacion entre las metricas actuales y sus promedios.
+
+    Logica:
+    - margen y ventas por encima del promedio -> COLOR_ATTENTION
+    - margen y ventas por debajo del promedio -> COLOR_RED
+    - ventas altas y margen bajo -> COLOR_PURPLE_DARK
+    - margen alto y ventas bajas -> COLOR_POS_LIGHT
+    """
     if profit_margin_to_measure > avg_margin and sales_to_measure > avg_sales:
-        return COLOR_ATTENTION  # High margin, high sales - optimal
+        return COLOR_ATTENTION
     elif profit_margin_to_measure < avg_margin and sales_to_measure < avg_sales:
-        return COLOR_RED  # Low margin, low sales - poor performance
+        return COLOR_RED
     elif profit_margin_to_measure < avg_margin and sales_to_measure > avg_sales:
-        return COLOR_PURPLE_DARK  # High sales but low margin - needs attention
-    else:  # row["Profit_Margin_Pct"] > avg_margin and row["Total_Sales"] < avg_sales
-        return COLOR_POS_LIGHT  # High margin but low sales - growth opportunity
+        return COLOR_PURPLE_DARK
+    else:
+        return COLOR_POS_LIGHT
 
 
 def _assign_color(row, avg_margin, avg_sales):
+    """
+    Asigna un color a una fila segun su margen y ventas comparados con los promedios.
+
+    Args:
+        row: Fila con las columnas Profit_Margin_Pct y Total_Sales.
+        avg_margin: Margen promedio de referencia.
+        avg_sales: Ventas promedio de referencia.
+
+    Returns:
+        Codigo de color para usar en graficos o tarjetas.
+    """
     if row["Profit_Margin_Pct"] > avg_margin and row["Total_Sales"] > avg_sales:
-        return COLOR_ATTENTION  # High margin, high sales - optimal
+        return COLOR_ATTENTION
     elif row["Profit_Margin_Pct"] < avg_margin and row["Total_Sales"] < avg_sales:
-        return COLOR_RED  # Low margin, low sales - poor performance
+        return COLOR_RED
     elif row["Profit_Margin_Pct"] < avg_margin and row["Total_Sales"] > avg_sales:
-        return COLOR_PURPLE_DARK  # High sales but low margin - needs attention
-    else:  # row["Profit_Margin_Pct"] > avg_margin and row["Total_Sales"] < avg_sales
-        return COLOR_POS_LIGHT  # High margin but low sales - growth opportunity
+        return COLOR_PURPLE_DARK
+    else:
+        return COLOR_POS_LIGHT
 
 
-def _add_color_labels_for_scatter_segmentations(fig):
-    # Add color legend box in top right corner
+def _add_color_labels_for_scatter_segmentations(fig, legend_items=None) -> Figure:
+    """
+    Funcion que permite anadir la leyenda directamente a la figura debajo del titulo y el insight de cada grafico que
+    trabaja con segmentaciones por margen y ventas.
+    :param fig: figura de plotly ingresada directamente a la funcion
+    :param legend_items: items de la leyenda que queremos mostrar en la grafica si no se registra se asume margen y ventas
+    :return:
+    """
+    if legend_items is None:
+        legend_items = [
+            (COLOR_ATTENTION, "Margen Alto y Ventas Altas"),
+            (COLOR_POS_LIGHT, "Margen Alto y Ventas Bajas"),
+            (COLOR_PURPLE_DARK, "Margen Bajo y Ventas Altas"),
+            (COLOR_RED, "Margen Bajo y Ventas Bajas")
+        ]
+
+    #? Definimos constantes relativas en el grafico, basadas en la formulacion del titulo del grafico
     legend_x_start = 0.05
     legend_y_start = 1.05
     box_height = 0.03
     box_width = 0.04
     spacing = 0.01
 
-    legend_items = [
-        (COLOR_ATTENTION, "Margen Alto y Ventas Altas"),
-        (COLOR_POS_LIGHT, "Margen Alto y Ventas Bajas"),
-        (COLOR_PURPLE_DARK, "Margen Bajo y Ventas Altas"),
-        (COLOR_RED, "Margen Bajo y Ventas Bajas")
-    ]
-
+    #? Iteramos sobre cada uno de los items de la leyenda y vamos dibujando un rectangulo con su color y un texto al lado
     current_x = legend_x_start
     for idx, (color, label) in enumerate(legend_items):
-        # Add colored box
+        #? 1. Anadimos la figura coloreada por cada clase, basado en el color definido en el legend_items
         fig.add_shape(
             type="rect",
             xref="paper", yref="paper",
+            #? Definimos que inicie en 0.05 x y que se mueva en y hacia abajo el tamano de la caja, y a la derecha el tamano de la caja
             x0=current_x, y0=legend_y_start - box_height,
             x1=current_x + box_width, y1=legend_y_start,
             fillcolor=color,
+            opacity=0.7, #Modificamos la opacidad del color para que cuadre con la opacidad del grafico
             line=dict(color=COLOR_LINE, width=1)
         )
 
-        # Add text label
+        #? 2. Anadimos una label del tipo de clase que estamos presentando
         fig.add_annotation(
             xref="paper", yref="paper",
             x=current_x + box_width + 0.005,
@@ -349,45 +418,52 @@ def _add_color_labels_for_scatter_segmentations(fig):
             xanchor="left",
             yanchor="middle",
             font=dict(size=10, color=COLOR_LINE, family="Arial"),
-            bgcolor="white",
-            bordercolor=COLOR_BG,
             borderwidth=1,
             borderpad=3
         )
 
-        # Calculate width of text annotation (approximate)
-        text_width = len(label) * 0.006  # Rough estimate
+        #? Calculamos una aproximacion del espacio del texto y usamos la longitud del texto estimada con un spacing para
+        #? avanzar el eje x
+        text_width = len(label) * 0.006
         current_x += box_width + text_width + spacing
 
     return fig
 
 
-# =============================================================================
-# Aggregations
-# =============================================================================
+def get_aggregations(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """
+    Funcion encargada de precalcular todas las agregaciones necesarias para los graficos a presentar. Esta funcion realiza todos los
+    group by requeridos y los guarda en un diccionario que puede ser usado dentro de la apliacacion para llamar a las
+    agrupaciones por nombres y su subsequente caching.
+    :param df:
+    :return:
+    """
 
-def get_aggregations(df: pd.DataFrame):
-    """Compute all needed aggregations for dashboard graphs."""
+    #? 1. Si no tenemos data entonces retornamos un diccionario vacio
     if df is None or df.empty:
         return {}
 
-    # Profit by Discount Bin
-    agg_profit_by_discount = df.groupby("Discount_Bin", observed=True)["Profit"].mean().reset_index()
+    #? 1.1 Calculamos la agregacion del promedio de ganancia por rango de descuento para la visualizacion 1 y
+    #? resetamos el indice para tener las bins y el profit como clumnas y no eje.
+    agg_profit_by_discount = (
+        df.groupby("Discount_Bin", observed=True)["Profit"].mean().reset_index()
+    )
+    #? 1.1.1 Renombramos las columnas para su facil uso en el analisis
     agg_profit_by_discount.columns = ["Discount_Bin", "Avg_Profit"]
 
-    # Margin by Discount Bin
+    #? 1.2 Calculamos la agregacion de margen de ganancia porcntual promedio por cada discount bin de la visualizacion 2
     agg_margin_by_discount = (
         df.groupby("Discount_Bin", observed=True)["Profit_Margin_Pct"].mean().reset_index()
     )
     agg_margin_by_discount.columns = ["Discount_Bin", "Avg_Profit_Margin_Pct"]
 
-    # Margin by Discount & Category
+    #? 1.3 Calculamos el margen de ganancia promedio por categoria para la visualizacion 3 lollipop
     agg_margin_by_category = (
         df.groupby(["Discount_Bin", "Category"], observed=True)["Profit_Margin_Pct"].mean().reset_index()
     )
     agg_margin_by_category.columns = ["Discount_Bin", "Category", "Avg_Profit_Margin_Pct"]
 
-    # Margin by Discount & Sub-Category
+    #? 1.4 Calculamos el margen de ganancia promedio por discount bin y subcategorya para el heatmap
     agg_margin_by_subcategory = (
         df.groupby(["Discount_Bin", "Sub-Category"], observed=True)["Profit_Margin_Pct"]
         .mean()
@@ -395,25 +471,27 @@ def get_aggregations(df: pd.DataFrame):
     )
     agg_margin_by_subcategory.columns = ["Discount_Bin", "Sub_Category", "Avg_Profit_Margin_Pct"]
 
-    # By Category (for scatter)
+    #? 1.5 Calculamos el total de clientes, el total de ingresos y el total de ganancia por categoria para KPIs
     agg_by_category = (
         df.groupby("Category")
         .agg({"Sales": "sum", "Profit": "sum", "Customer ID": "nunique"})
         .reset_index()
     )
     agg_by_category.columns = ["Category", "Total_Sales", "Total_Profit", "Unique_Customers"]
+    #? 1.5.1 Calculmoas el margen de ganancia porcentaual por categoria
     agg_by_category["Profit_Margin_Pct"] = np.where(
         agg_by_category["Total_Sales"] > 0,
         (agg_by_category["Total_Profit"] / agg_by_category["Total_Sales"]) * 100,
         0
     )
+    #? 1.5.2 Calculamos el total de venta promedio por cliente
     agg_by_category["Avg_Sale_Per_Customer"] = np.where(
         agg_by_category["Unique_Customers"] > 0,
         agg_by_category["Total_Sales"] / agg_by_category["Unique_Customers"],
         0
     )
 
-    # By Sub-Category (for scatter)
+    #? 1.6 Calculamos el total de ventas, clientes unicos y ganancia por categoria y subcategoria
     agg_by_subcategory = (
         df.groupby(by=["Category", "Sub-Category"])
         .agg({"Sales": "sum", "Profit": "sum", "Customer ID": "nunique"})
@@ -431,7 +509,7 @@ def get_aggregations(df: pd.DataFrame):
         0
     )
 
-    # Price-Volume-Profit by Category (bubble chart)
+    #? 1.7 Calculamos el total de ordenes, ventas promedio y ganancia total para cada categoria para los scatter plots
     agg_price_volume = df.groupby('Category').agg({
         'Sales': ['sum', 'mean'],
         'Profit': 'sum',
@@ -444,7 +522,8 @@ def get_aggregations(df: pd.DataFrame):
         0
     )
 
-    # Customer Purchase by Discount & Category (line chart)
+    #? 1.8 Calculamos el promedio de compra por cliente para cada categoria y por cada rango de descuento para el analisis
+    #? de compra
     agg_customer_purchase = df.groupby(['Discount_Bin', 'Category'], observed=True).agg({
         'Sales': 'sum',
         'Customer ID': 'nunique'
@@ -456,7 +535,6 @@ def get_aggregations(df: pd.DataFrame):
         0
     )
 
-    # Customer Value by Category (for pricing KPIs)
     agg_customer_value = df.groupby('Category').agg({
         'Sales': 'sum',
         'Customer ID': 'nunique'
@@ -468,6 +546,7 @@ def get_aggregations(df: pd.DataFrame):
         0
     )
 
+    #? 1.8 Retornamos todo en un diccionario
     return {
         "profit_by_discount": agg_profit_by_discount,
         "margin_by_discount": agg_margin_by_discount,
@@ -481,12 +560,17 @@ def get_aggregations(df: pd.DataFrame):
     }
 
 
-# =============================================================================
-# Charts - Waterfall
-# =============================================================================
 
-def plot_waterfall(agg_profit, agg_margin):
-    """Waterfall charts for profit analysis."""
+def plot_waterfall(agg_profit: pd.DataFrame, agg_margin: pd.DataFrame) -> Figure:
+    """
+    Grafico de waterfall para la demostracion de contenido del promedio de ganancia y margen porcetual por rango de
+    decuentos
+    :param agg_profit: Dataframe con los datos agregados de profit
+    :param agg_margin: Daatframe con los datos agregados del margen porcentual
+    :return:
+    """
+
+    #? 1. Creamos dos subplots para cada uno de los elementos del waterfall chart con un titulo especifico
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -497,16 +581,18 @@ def plot_waterfall(agg_profit, agg_margin):
 
     )
 
+    #? 2. Generamos una trace, es decir un grafico, basado en Graphic Objects.Waterfall definimos en x los discount bins
+    #? en y el promedio de ganancia real y definimos que colores usar para el grafico y sus componentes
     fig.add_trace(
         go.Waterfall(
             x=agg_profit["Discount_Bin"],
             y=agg_profit["Avg_Profit"],
             text=[f"${val:.2f}" for val in agg_profit["Avg_Profit"]],
             textposition="outside",
-            increasing={"marker": {"color": COLOR_POSITIVE}},
+            increasing={"marker": {"color": COLOR_ATTENTION}},
             decreasing={"marker": {"color": COLOR_NEGATIVE}},
             connector={"line": {"color": COLOR_LINE}},
-            name="Avg Profit",
+            name="Avg Profit"
         ),
         row=1,
         col=1,
@@ -518,7 +604,7 @@ def plot_waterfall(agg_profit, agg_margin):
             y=agg_margin["Avg_Profit_Margin_Pct"],
             text=[f"{val:.2f}%" for val in agg_margin["Avg_Profit_Margin_Pct"]],
             textposition="outside",
-            increasing={"marker": {"color": COLOR_POSITIVE}},
+            increasing={"marker": {"color": COLOR_ATTENTION}},
             decreasing={"marker": {"color": COLOR_NEGATIVE}},
             connector={"line": {"color": COLOR_LINE}},
             name="Margin (%)",
@@ -526,6 +612,7 @@ def plot_waterfall(agg_profit, agg_margin):
         row=1,
         col=2,
     )
+
 
     fig.update_layout(
         autosize=False,
@@ -543,6 +630,8 @@ def plot_waterfall(agg_profit, agg_margin):
     else:
         discount_text = "ya que <b>todos los rangos de descuento generan pérdidas</b> en el periodo seleccionado"
 
+
+    #? Aplicamos los estilos del grafico general y los ejes para cada par de figuras
     _apply_standard_theme(
         fig,
         "Comparativa de Ganancia y Margen de Ganancia Promedio por cada Intervalo de Descuentos Aplicado",
@@ -581,12 +670,16 @@ def plot_waterfall(agg_profit, agg_margin):
     return fig
 
 
-# =============================================================================
-# Charts - Lollipop
-# =============================================================================
 
-def plot_lollipop(agg_margin_by_cat, selected_categories=None):
-    """Lollipop chart by category."""
+def plot_lollipop(agg_margin_by_cat: pd.DataFrame, selected_categories: None | Iterable[Any]) -> Figure:
+    """
+    Grafico de lollipop para mostrar el margen de ganancia promedio por categoria y por rango de descuento
+    :param agg_margin_by_cat:
+    :param selected_categories:
+    :return:
+    """
+
+    #? Filtramos los datos dependiendo de si teneomos categorias o no definidas en las categorias seleccionadas
     if selected_categories:
         data = agg_margin_by_cat[agg_margin_by_cat["Category"].isin(selected_categories)]
     else:
@@ -595,24 +688,32 @@ def plot_lollipop(agg_margin_by_cat, selected_categories=None):
     fig = go.Figure()
     categories = data["Category"].unique()
 
+    #? Por cada categoria procedemos a dibuar tanto el scatter de un solo eje para el palo del lollipop chart
     for idx, category in enumerate(categories):
+
         cat_data = data[data["Category"] == category]
         x_positions = []
         discount_bin_labels = []
 
+        #? OJO: calculamos los offsets de donde van a ir los palitos de cada una de las categorias en base a un offset especifico
+        #? definido para todas las columnas por categoria en base a el numero de la categoria y todos los steps de discount bin existentes.
+        #? Esto porque al tener varias categorias en el mismo grafico y con varios pasos por cada discount bin, los desfasamos
+        #? para que se vean bien
         for i, discount_bin in enumerate(cat_data["Discount_Bin"]):
             offset = (idx - 1) * 0.25
             x_positions.append(i + offset)
             discount_bin_labels.append(str(discount_bin))
 
-        # Draw stick
+        #? Dibujamos por cada categoria el palito en la posicion correspondiente definida por el calculo del offset
+        #? para cada discount bin
         for i, x in enumerate(x_positions):
             fig.add_trace(
                 go.Scatter(
-                    x=[x, x],
-                    y=[0, cat_data["Avg_Profit_Margin_Pct"].iloc[i]],
+                    x=[x, x], #Esto le indica al programa que la x no cambia de lugar, es una sola posicion
+                    y=[0, cat_data["Avg_Profit_Margin_Pct"].iloc[i]], #Esto le indica a plotly que el final del grafico es el punto
+                    # encima que representa el valor del margen porcentual, lo que genera una linea recta
                     mode="lines",
-                    line=dict(color=CATEGORY_COLORS.get(category, "#333"), width=2),
+                    line=dict(color=COLOR_LINE, width=2),
                     hoverinfo="skip",
                     legendgroup=category,
                     name=category,
@@ -620,7 +721,9 @@ def plot_lollipop(agg_margin_by_cat, selected_categories=None):
                 )
             )
 
-        # Draw candy
+        #? Aqui creamos el scatter de la bolita para el lollipop chart, definido en la misma posicio de x que la posicion calculada
+        #? para cada uno de los puntos de x_positions (puntos de cada discount bin) y donde la altura varia con respecto
+        #? al valor del porcentaje
         fig.add_trace(
             go.Scatter(
                 x=x_positions,
@@ -641,6 +744,7 @@ def plot_lollipop(agg_margin_by_cat, selected_categories=None):
             )
         )
 
+    #? Aplicamos los temas generales del grafico y sus ejes
     _apply_standard_theme(
         fig,
         "Margen de Ganancia por cada Categoría del Inventario",
@@ -677,16 +781,25 @@ def plot_lollipop(agg_margin_by_cat, selected_categories=None):
     return fig
 
 
-# =============================================================================
-# Charts - Heatmap
-# =============================================================================
 
-def plot_heatmap(agg_margin_by_subcat, selected_subcats=None, top_n=None):
-    """Heatmap for sub-categories profit margin."""
+def plot_heatmap(agg_margin_by_subcat: pd.DataFrame, selected_subcats: Iterable[Any], top_n: int) -> Figure | None:
+    """
+    Grafico de heatmap para mostrar el margen de ganancia promedio por subcategoria y por rango de descuento
+    :param agg_margin_by_subcat:
+    :param selected_subcats:
+    :param top_n:
+    :return:
+    """
+
+    #? Realizamos una  copia de los datos originales para la modificacion interna, dado que vamos a modificar la data
+    #? dependiendo de los filtros que tengamos. Si tenemos subcategorias seleccioandas entoncs ifltramos los datos para esas
+    #?categorias, si tenemos top_n entncones realizamos otro proceso
     data = agg_margin_by_subcat.copy()
     if selected_subcats:
         data = data[data["Sub_Category"].isin(selected_subcats)]
     elif top_n:
+        #? Para obtener l top_n hacemos una agrupacion en donde obtenemos el promedio del margen de ganancia porcentual para
+        #? cada subcateogria y obtenemos el top_n de ese promedio.
         overall = data.groupby("Sub_Category")["Avg_Profit_Margin_Pct"].mean().reset_index()
         top_subs = overall.nlargest(top_n, "Avg_Profit_Margin_Pct")["Sub_Category"].tolist()
         data = data[data["Sub_Category"].isin(top_subs)]
@@ -694,11 +807,18 @@ def plot_heatmap(agg_margin_by_subcat, selected_subcats=None, top_n=None):
     if data.empty:
         return None
 
-    # Transform for Heatmap
+    #? Dado que tenemos una tabla de datos y no una tabla pivote para hacer el heatmap, transformamos a una tabla pivote
+    #? cruzada con las categorias como indice y las columnas como discount bins con el margen de ganancia promedio
+    #? como el  dato de cada celda
     pivot_df = data.pivot(index="Sub_Category", columns="Discount_Bin", values="Avg_Profit_Margin_Pct")
-    # Ensure columns are in correct order from DISCOUNT_LABELS
+
+    #? Aqui nos aseguramos de que las columnas se encuentren en el orden requerido por el orden natural de los descuentos
     pivot_df = pivot_df.reindex(columns=DISCOUNT_LABELS)
 
+
+    #? Aqui generaoms las labels de los datos para el grafico, la idea esq que no queremos mostrar NaN en celdas vacias,
+    #? por lo que generamos el arreglo de texto, es decr una matrix de dos dimensiones que tiene n filas como subcategorias
+    #? y m columna spor discount bins donde el valor se registra si no es NaN y si lo es se esconde.
     text_array = []
     for i, row in enumerate(pivot_df.values):
         text_row = []
@@ -709,8 +829,9 @@ def plot_heatmap(agg_margin_by_subcat, selected_subcats=None, top_n=None):
                 text_row.append(f"{val:.0f}%")
         text_array.append(text_row)
 
+    #? Generamos el heatmap con los datos ya procesados
     fig = go.Figure(data=go.Heatmap(
-        z=pivot_df.values,
+        z=pivot_df.values, #Esto define los valores en el dataset
         x=pivot_df.columns,
         y=pivot_df.index,
         colorscale="RdYlGn",
@@ -719,11 +840,12 @@ def plot_heatmap(agg_margin_by_subcat, selected_subcats=None, top_n=None):
         hovertemplate="<b>%{y}</b><br>Discount: %{x}<br>Margin: %{z:.2f}%<extra></extra>",
         xgap=1,
         ygap=1,
-        text=text_array,
+        text=text_array, #Aqui reistramos el texto generado
         texttemplate="%{text}",
         showscale=True
     ))
 
+    #? Aplicamos el foramto normal
     _apply_standard_theme(
         fig,
         "Tabulación del Margen de Ganancia por Subcategoría segmentado por Rango de Descuento",
@@ -736,16 +858,24 @@ def plot_heatmap(agg_margin_by_subcat, selected_subcats=None, top_n=None):
     return fig
 
 
-# =============================================================================
-# Charts - Pricing Strategy
-# =============================================================================
 
-def plot_price_volume_profit_bubble(agg_price_volume):
-    """Bubble chart: Price-Volume-Profit by Category."""
+def plot_price_volume_profit_bubble(agg_price_volume: pd.DataFrame) -> Figure | None:
+    """
+    Grafico de burbujas que muestra el analisis precio volumen utilidad por categoria
+    :param agg_price_volume:
+    :return:
+    """
+
+    #? Aqui extraemos las constantes requeridas para los ejes del scatter plot y las lineas de segmentos.
     avg_margin = agg_price_volume['Profit_Margin_Pct'].mean()
     avg_price = agg_price_volume['Avg_Price'].mean()
     agg_price_volume = agg_price_volume.copy()
-    # Vectorized color assignment
+
+
+    #? Aqui aplicamos una categorizacion en base condiciones definidas mediante Numpy, dado que tenemos varias condiciones
+    #? usamos Numpy.select para estas multiples condiciones basados en los colores ya que el proceso de seleccion en base
+    #? a matematica de vectores y la implmentacion de numpy es mucho mas rapida y eficiente que una aplicacio por apply
+    #? o condiciones
     conditions = [
         (agg_price_volume['Profit_Margin_Pct'] > avg_margin) & (agg_price_volume['Avg_Price'] > avg_price),
         (agg_price_volume['Profit_Margin_Pct'] < avg_margin) & (agg_price_volume['Avg_Price'] < avg_price),
@@ -791,6 +921,7 @@ def plot_price_volume_profit_bubble(agg_price_volume):
         )
     )
 
+    #? Anadimos cada una de las burbujas por categoria en base del color correspondiente y los datos de su instancia
     for idx, row in agg_price_volume.iterrows():
         fig.add_trace(go.Scatter(
             x=[row['Avg_Price']],
@@ -816,7 +947,15 @@ def plot_price_volume_profit_bubble(agg_price_volume):
             )
         ))
 
-    _add_color_labels_for_scatter_segmentations(fig)
+    #? Agregamos las etiquetas de los segmentos del scatter plot
+    _add_color_labels_for_scatter_segmentations(fig, [
+            (COLOR_ATTENTION, "Margen Alto y Precio Prom. Alto"),
+            (COLOR_POS_LIGHT, "Margen Alto y Precio Prom. Bajo"),
+            (COLOR_PURPLE_DARK, "Margen Bajo y Precio Prom. Alto"),
+            (COLOR_RED, "Margen Bajo y Precio Prom. Bajo")
+        ])
+
+    #? Anadimos labels dinamicas al insight del grafico
     max_cat_by_average_sale = agg_price_volume.loc[agg_price_volume['Avg_Price'].idxmax(), 'Category']
     max_cat_by_average_sale_second_place = agg_price_volume.loc[
         agg_price_volume['Avg_Price'].nlargest(2).index[-1], 'Category']
@@ -824,6 +963,7 @@ def plot_price_volume_profit_bubble(agg_price_volume):
     max_cat_by_margin = agg_price_volume.loc[agg_price_volume['Profit_Margin_Pct'].idxmax(), 'Category']
     max_cat_by_margin_value = agg_price_volume.loc[agg_price_volume['Profit_Margin_Pct'].idxmax(), 'Profit_Margin_Pct']
 
+    #? Aplicamos el tema general al grafico
     _apply_standard_theme(
         fig,
         "Análisis Precio-Volumen-Utilidad por Categoría",
@@ -868,8 +1008,12 @@ def plot_price_volume_profit_bubble(agg_price_volume):
     return fig
 
 
-def plot_avg_customer_purchase_by_discount(agg_customer_purchase):
-    """Line chart: Average Customer Purchase Value by Category across Discount Bins."""
+def plot_avg_customer_purchase_by_discount(agg_customer_purchase: pd.DataFrame) -> Figure | None:
+    """
+    Grafico de lineas que muestra la compra promedio por cliente segun rango de descuento por categoria
+    :param agg_customer_purchase:
+    :return:
+    """
     fig = go.Figure()
 
     for category in sorted(agg_customer_purchase['Category'].unique()):
@@ -950,12 +1094,15 @@ def plot_avg_customer_purchase_by_discount(agg_customer_purchase):
     return fig
 
 
-# =============================================================================
-# Charts - Scatter
-# =============================================================================
 
 def plot_scatter_category(agg_data, min_sales=None, margin_range=None):
-    """Scatter plot by category."""
+    """
+    Grafico de dispersion que muestra la relacion entre ventas totales y margen de ganancia agrupadas por categoria
+    :param agg_data:
+    :param min_sales:
+    :param margin_range:
+    :return:
+    """
     data = agg_data.copy()
     if min_sales:
         data = data[data["Total_Sales"] >= min_sales]
@@ -1245,9 +1392,6 @@ def plot_scatter_subcategory(agg_data, cat_filter=None, min_sales=None, margin_r
     return fig
 
 
-# =============================================================================
-# Session State & Main Logic
-# =============================================================================
 
 def init_user_state() -> None:
     if "user_initialized" not in st.session_state:
@@ -1261,17 +1405,18 @@ def init_user_state() -> None:
 
 @st.cache_data(ttl=3600)
 def load_data() -> pd.DataFrame:
-    """Load dataset."""
+    """
+    Funcion encargada de la carga de datos desde un archivo CSV o una URL remota.
+    :return:
+    """
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Navigate to the data file relative to script location
-    # Adjust the path based on your actual structure
+
     dataset_path = os.path.join(
         script_dir,
         "..", "..", "..", "res", "processed_data",
         "ProyectoFinSemestreADM3083_SuperstoreProcessed.csv"
     )
 
-    # Fallback to GitHub if local file doesn't exist (for flexibility)
     if os.path.exists(dataset_path):
         dataset = pd.read_csv(dataset_path, sep=",")
     else:
@@ -1297,7 +1442,7 @@ def render_sidebar(data: pd.DataFrame | None):
     """Render sidebar controls."""
     st.sidebar.title("Controles de Filtros Generales")
     st.sidebar.markdown(
-        "Filtros generales para toda la dashboardoard. Estos filtros afectan a todas las visualizaciones y permiten segmentar los datos por tiempo, región, mecanismo de envío, y ubicación geográfica del cliente.")
+        "Filtros generales para toda la dashboard Estos filtros afectan a todas las visualizaciones y permiten segmentar los datos por tiempo, región, mecanismo de envío, y ubicación geográfica del cliente.")
 
     # --- Global Filters ---
     st.sidebar.subheader("Filtros Temporales")
@@ -2173,19 +2318,19 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
             top_revenue = agg_pv["Total_Revenue"].max()
             st.html(f"""
             <div style="background: linear-gradient(90deg, {COLOR_BROWN_DARK}, {COLOR_BROWN_LIGHT}); padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-                  <h4 style="margin: 0; color: {WHITE}; font-weight: 400; letter-spacing: 0.5px;">GENERACIÓN DE INGRESOS BRUTOS</h4>
-                  <h2 style="margin: 10px 0; color: {WHITE}; font-size: 2em;">${top_revenue:,.2f}</h2>
-                  <p style="margin: 5px 0; color: {WHITE};">Líder: <b>{top_revenue_cat}</b></p>
-                  <p style="margin: 10px 0 0 0; font-size: 0.9em; color: {WHITE}; line-height: 1.4;">Aporta el motor principal de flujo de caja para la operación global.</p>
+                  <h4 style="margin: 0; color: {COLOR_WHITE}; font-weight: 400; letter-spacing: 0.5px;">GENERACIÓN DE INGRESOS BRUTOS</h4>
+                  <h2 style="margin: 10px 0; color: {COLOR_WHITE}; font-size: 2em;">${top_revenue:,.2f}</h2>
+                  <p style="margin: 5px 0; color: {COLOR_WHITE};">Líder: <b>{top_revenue_cat}</b></p>
+                  <p style="margin: 10px 0 0 0; font-size: 0.9em; color: {COLOR_WHITE}; line-height: 1.4;">Aporta el motor principal de flujo de caja para la operación global.</p>
               </div>
             """)
         else:
             st.html(f"""
             <div style="background: linear-gradient(90deg, {COLOR_BROWN_DARK}, {COLOR_BROWN_LIGHT}); padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-                  <h4 style="margin: 0; color: {WHITE}; font-weight: 400; letter-spacing: 0.5px;">GENERACIÓN DE INGRESOS BRUTOS</h4>
-                  <h2 style="margin: 10px 0; color: {WHITE}; font-size: 2em;">$--</h2>
-                  <p style="margin: 5px 0; color: {WHITE};">Líder: <b>--</b></p>
-                  <p style="margin: 10px 0 0 0; font-size: 0.9em; color: {WHITE}; line-height: 1.4;">No hay datos disponibles para los filtros seleccionados.</p>
+                  <h4 style="margin: 0; color: {COLOR_WHITE}; font-weight: 400; letter-spacing: 0.5px;">GENERACIÓN DE INGRESOS BRUTOS</h4>
+                  <h2 style="margin: 10px 0; color: {COLOR_WHITE}; font-size: 2em;">$--</h2>
+                  <p style="margin: 5px 0; color: {COLOR_WHITE};">Líder: <b>--</b></p>
+                  <p style="margin: 10px 0 0 0; font-size: 0.9em; color: {COLOR_WHITE}; line-height: 1.4;">No hay datos disponibles para los filtros seleccionados.</p>
               </div>
             """)
 
@@ -2195,14 +2340,13 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
         avg_transaction_value = data['Sales'].mean()
         st.html(f"""
         <div style="background: linear-gradient(90deg, {COLOR_BROWN_DARK}, {COLOR_BROWN_LIGHT}); padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-              <h4 style="margin: 0; color: {WHITE}; font-weight: 400; letter-spacing: 0.5px;">VELOCIDAD Y TRACCIÓN COMERCIAL</h4>
-              <h2 style="margin: 10px 0; color: {WHITE}; font-size: 2em;">{total_transactions:,} Órdenes</h2>
-              <p style="margin: 5px 0; color: {WHITE};">Ticket Medio: <b>${avg_transaction_value:,.2f}</b></p>
-              <p style="margin: 10px 0 0 0; font-size: 0.9em; color: {WHITE}; line-height: 1.4;">Refleja la intensidad de la demanda y la recurrencia operativa del portafolio.</p>
+              <h4 style="margin: 0; color: {COLOR_WHITE}; font-weight: 400; letter-spacing: 0.5px;">VELOCIDAD Y TRACCIÓN COMERCIAL</h4>
+              <h2 style="margin: 10px 0; color: {COLOR_WHITE}; font-size: 2em;">{total_transactions:,} Órdenes</h2>
+              <p style="margin: 5px 0; color: {COLOR_WHITE};">Ticket Medio: <b>${avg_transaction_value:,.2f}</b></p>
+              <p style="margin: 10px 0 0 0; font-size: 0.9em; color: {COLOR_WHITE}; line-height: 1.4;">Refleja la intensidad de la demanda y la recurrencia operativa del portafolio.</p>
           </div>
         """)
 
-    # Filters for bubble chart
     f1, f2 = st.columns(2)
     with f1:
         agg_pv = aggs.get("price_volume_by_category", pd.DataFrame())
@@ -2227,7 +2371,6 @@ def render_tab_pricing(data: pd.DataFrame, aggs: dict):
             help="Define el espectro de rentabilidad para el análisis comparativo."
         )
 
-    # Apply filters and plot
     agg_bubble = aggs.get("price_volume_by_category", pd.DataFrame())
     if not agg_bubble.empty:
         filtered_bubble = agg_bubble[
@@ -2361,7 +2504,6 @@ def main():
     data = initialize_dashboard()
     filters = render_sidebar(data)
 
-    # Apply filters
     filtered = apply_filters(
         data,
         filters["date_range"],
@@ -2373,10 +2515,8 @@ def main():
         filters["city"],
     )
 
-    # Compute aggregations on filtered data
     aggregations = get_aggregations(filtered)
 
-    # Tabbed layout
     tabs = st.tabs([
         "Visión Rentabilidad por Descuentos",
         "Visión Rentabilidad por Categoría y Subcategoría",
