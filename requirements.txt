@@ -18,3 +18,7 @@ pillow
 statsmodels
 scipy-stubs
 pygments
+openpyxl
+xlrd
+python-dateutil
+pytz
