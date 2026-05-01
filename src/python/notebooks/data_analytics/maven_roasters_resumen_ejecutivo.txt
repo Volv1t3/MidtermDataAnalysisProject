@@ -1,0 +1,23 @@
+================================================================================
+RESUMEN EJECUTIVO - MAVEN ROASTERS
+Análisis de Ventas: Enero - Junio 2023
+================================================================================
+
+MÉTRICAS CLAVE:
+--------------------------------------------------------------------------------
+Ingresos Totales: $698,812.33
+Ticket Promedio: $4.69
+Transacciones: 149,116
+Crecimiento MoM (Ene→Jun): +103.83%
+Mejor Tienda: Hell's Kitchen ($236,511)
+Producto Líder: Barista Espresso ($91,406)
+Hora Pico: 10:00 hrs
+Mejor Mes: Junio
+
+RECOMENDACIONES PRIORITARIAS:
+--------------------------------------------------------------------------------
+1. Optimizar staffing en Lunes y durante 10:00-12:00 hrs
+2. Replicar mejores prácticas de Hell's Kitchen en otras ubicaciones
+3. Asegurar stock de top 10 productos que generan 80% de ingresos
+4. Implementar programa de lealtad para clientes de alto valor (>$9)
+5. Diseñar promociones para días de baja afluencia (Sábado)

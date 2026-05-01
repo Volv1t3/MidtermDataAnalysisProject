@@ -1,0 +1,60 @@
+{
+  "total_records": 149116,
+  "columns": [
+    "transaction_id",
+    "transaction_date",
+    "transaction_time",
+    "transaction_qty",
+    "store_id",
+    "store_location",
+    "product_id",
+    "unit_price",
+    "product_category",
+    "product_type",
+    "product_detail"
+  ],
+  "column_types": {
+    "transaction_id": "int64",
+    "transaction_date": "datetime64[ns]",
+    "transaction_time": "object",
+    "transaction_qty": "int64",
+    "store_id": "int64",
+    "store_location": "object",
+    "product_id": "int64",
+    "unit_price": "float64",
+    "product_category": "object",
+    "product_type": "object",
+    "product_detail": "object"
+  },
+  "missing_values": {},
+  "date_range": {
+    "column": "transaction_date",
+    "min": "2023-01-01 00:00:00",
+    "max": "2023-06-30 00:00:00"
+  },
+  "store_locations": {
+    "store_id": [
+      5,
+      8,
+      3
+    ],
+    "store_location": [
+      "Lower Manhattan",
+      "Hell's Kitchen",
+      "Astoria"
+    ]
+  },
+  "product_categories": {
+    "product_category": [
+      "Coffee",
+      "Tea",
+      "Drinking Chocolate",
+      "Bakery",
+      "Flavours",
+      "Loose Tea",
+      "Coffee beans",
+      "Packaged Chocolate",
+      "Branded"
+    ]
+  }
+}
